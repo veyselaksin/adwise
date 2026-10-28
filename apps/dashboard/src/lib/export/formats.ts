@@ -2,6 +2,7 @@ import "server-only";
 import { formatMetric } from "@/lib/format";
 import type { Unit } from "@/lib/types";
 import { toCsv } from "./csv";
+import { toMarkdown } from "./markdown";
 import { toPdf } from "./pdf";
 import type { CellValue, ExportReport, ExportRow, ExportTable } from "./report";
 import { toXlsx } from "./xlsx";
@@ -15,6 +16,7 @@ export const EXPORT_FORMATS = {
   },
   csv: { label: "CSV (ads)", extension: "csv", contentType: "text/csv; charset=utf-8" },
   json: { label: "JSON", extension: "json", contentType: "application/json; charset=utf-8" },
+  md: { label: "Markdown", extension: "md", contentType: "text/markdown; charset=utf-8" },
 } as const;
 
 export type ExportFormat = keyof typeof EXPORT_FORMATS;
@@ -46,6 +48,8 @@ export async function renderExport(
       if (!table) throw new Error(`Unknown table: ${id}`);
       return { body: toCsv(table), fileName: fileName(`_${table.id}`) };
     }
+    case "md":
+      return { body: toMarkdown(report), fileName: fileName() };
     case "xlsx":
       return { body: await toXlsx(report), fileName: fileName() };
     case "pdf":

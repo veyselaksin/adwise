@@ -1,10 +1,10 @@
 import type { FastifyBaseLogger } from "fastify";
 import { ModelError } from "../clients/zenmux.client.js";
-import { AGENT_MAX_STEPS, AGENT_RECENT_MESSAGES } from "../constants/agent.constant.js";
+import { AGENT_MAX_FOLLOW_UPS, AGENT_MAX_STEPS, AGENT_RECENT_MESSAGES } from "../constants/agent.constant.js";
 import { AppError } from "../lib/response.js";
 import type { AgentEvent, AgentModelId, ChatMessage, ModelClient, ModelMessage, ModelUsage } from "../types/agent.type.js";
 import { buildSystemPrompt } from "./agent.prompt.js";
-import { runTool, TOOL_DECLARATIONS, toolLabel, type ToolDeps } from "./agent.tools.js";
+import { runTool, TOOL_DECLARATIONS, toolLabel, type ToolDeps, type ToolOutput } from "./agent.tools.js";
 import type { KnowledgeService } from "./knowledge.service.js";
 import type { RulesService } from "./rules.service.js";
 
@@ -69,17 +69,19 @@ export class AgentService {
         const text = (message.content ?? "").trim();
         if (calls.length === 0) {
           if (!text) throw new ModelError("MODEL_ERROR", "The model returned an empty answer. Try rephrasing the question.");
-          yield { type: "answer", text };
+          const { answer, followUps } = splitFollowUps(text);
+          yield { type: "answer", text: answer };
+          if (followUps.length > 0) yield { type: "follow_ups", questions: followUps };
           break;
         }
-        if (text) yield { type: "note", text };
+        if (text) yield { type: "note", text: splitFollowUps(text).answer };
 
         const ids = calls.map((_, i) => `${steps}.${i + 1}`);
         const args = calls.map((call) => parseArgs(call.function.arguments));
         for (const [i, call] of calls.entries()) {
           yield { type: "tool_call", id: ids[i]!, tool: call.function.name, label: toolLabel(call.function.name, args[i] ?? {}), args: args[i] ?? {} };
         }
-        const outputs = await Promise.all(
+        const outputs: ToolOutput[] = await Promise.all(
           calls.map((call, i) =>
             args[i]
               ? runTool(call.function.name, args[i], this.deps)
@@ -90,6 +92,7 @@ export class AgentService {
           const out = outputs[i]!;
           if (!out.ok) this.log.warn({ tool: call.function.name, args: call.function.arguments, error: out.data.error }, "Agent tool call failed");
           yield { type: "tool_result", id: ids[i]!, ok: out.ok, summary: out.summary };
+          if (out.export) yield { type: "export", id: ids[i]!, label: toolLabel(call.function.name, args[i] ?? {}), ...out.export };
           history.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(out.data) });
         }
       }
@@ -105,6 +108,22 @@ export class AgentService {
     }
     yield { type: "done", model, steps, usage };
   }
+}
+
+/**
+ * Separates the hidden follow-up block the prompt asks for from the answer, so
+ * the answer (and the history the dashboard sends back) stays clean.
+ */
+export function splitFollowUps(text: string): { answer: string; followUps: string[] } {
+  const match = /<!--\s*follow-ups\b([\s\S]*?)(?:-->|$)/i.exec(text);
+  if (!match) return { answer: text, followUps: [] };
+  const followUps = match[1]!
+    .split("\n")
+    .map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim())
+    .filter((q) => q.length > 0 && q.length <= 200)
+    .slice(0, AGENT_MAX_FOLLOW_UPS);
+  const answer = (text.slice(0, match.index) + text.slice(match.index + match[0].length)).trim();
+  return { answer: answer || text, followUps };
 }
 
 /** The model's tool arguments, a JSON string; null when they aren't a JSON object. */

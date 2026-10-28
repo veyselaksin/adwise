@@ -1,4 +1,5 @@
 import type { AGENT_MODEL_IDS } from "../constants/agent.constant.js";
+import type { EXPORT_FORMATS, EXPORT_TABLES } from "../constants/export.constant.js";
 
 export type AgentModelId = (typeof AGENT_MODEL_IDS)[number];
 
@@ -52,8 +53,25 @@ export interface ModelClient {
 export type AgentEvent =
   | { type: "tool_call"; id: string; tool: string; label: string; args: Record<string, unknown> }
   | { type: "tool_result"; id: string; ok: boolean; summary: string }
+  | ({ type: "export"; id: string; label: string } & ExportRequest)
   | { type: "text_delta"; text: string }
   | { type: "note"; text: string }
   | { type: "answer"; text: string }
+  | { type: "follow_ups"; questions: string[] }
   | { type: "error"; code: string; message: string; retryAfterSeconds?: number }
   | { type: "done"; model: AgentModelId; steps: number; usage: ModelUsage };
+
+/**
+ * A file the user asked the agent for. The dashboard offers it as a download from its
+ * own `/export` route with these filters, so it matches the overview.
+ */
+export type ExportRequest = {
+  format: (typeof EXPORT_FORMATS)[number];
+  preset?: string;
+  from?: string;
+  to?: string;
+  channel?: "meta" | "tiktok";
+  country?: string;
+  /** Report tables to include; all of them when omitted. CSV holds one (ads by default). */
+  tables?: (typeof EXPORT_TABLES)[number][];
+};

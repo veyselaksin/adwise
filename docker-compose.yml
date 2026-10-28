@@ -1,0 +1,48 @@
+# Dokploy "Docker Compose" service. Set the variables below in Dokploy's Environment
+# tab, and attach the public domain to `dashboard` (port 3000) in the Domains tab.
+# The API stays internal; the dashboard reaches it at http://server:4000.
+#
+# The case folder is never in git: copy it to the Dokploy host (e.g. with scp) and
+# set CASE_HOST_DIR to that path. It's mounted read-only.
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    restart: unless-stopped
+    expose:
+      - "4000"
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      CORS_ORIGIN: ${CORS_ORIGIN:?set to the dashboard URL}
+      JWT_SECRET: ${JWT_SECRET:?}
+      COOKIE_SECRET: ${COOKIE_SECRET:?}
+      DOCS_ENABLED: ${DOCS_ENABLED:-false}
+      DOCS_USER: ${DOCS_USER:-docs}
+      DOCS_PASSWORD: ${DOCS_PASSWORD:?}
+      APP_USER: ${APP_USER:?}
+      APP_PASSWORD: ${APP_PASSWORD:?}
+      DB_PATH: /case/data/livensa.db
+      CASE_DIR: /case
+      ZENMUX_API_KEY: ${ZENMUX_API_KEY:-}
+      AGENT_MODEL: ${AGENT_MODEL:-deepseek/deepseek-v4.1-flash}
+    volumes:
+      - ${CASE_HOST_DIR:?path to the case folder on the host}:/case:ro
+      - rules:/app/apps/server/data
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: apps/dashboard/Dockerfile
+    restart: unless-stopped
+    expose:
+      - "3000"
+    environment:
+      API_URL: http://server:4000
+    depends_on:
+      server:
+        condition: service_healthy
+
+volumes:
+  rules:

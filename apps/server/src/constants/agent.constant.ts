@@ -26,6 +26,9 @@ export const AGENT_MODELS = [
   },
 ] as const satisfies readonly { id: string; label: string; description: string; temperature?: number }[];
 
+/** Suggested next questions sent after an answer; more are dropped. */
+export const AGENT_MAX_FOLLOW_UPS = 3;
+
 export const AGENT_MODEL_IDS = AGENT_MODELS.map((m) => m.id);
 
 /** Model calls per question, tool rounds included. The last one is forced to answer. */

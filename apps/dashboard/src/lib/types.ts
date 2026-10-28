@@ -137,11 +137,24 @@ export type ChatMessage = { role: "user" | "assistant"; text: string };
 export type AgentEvent =
   | { type: "tool_call"; id: string; tool: string; label: string; args: Record<string, unknown> }
   | { type: "tool_result"; id: string; ok: boolean; summary: string }
+  | ({ type: "export"; id: string; label: string } & AgentExport)
   | { type: "text_delta"; text: string }
   | { type: "note"; text: string }
   | { type: "answer"; text: string }
+  | { type: "follow_ups"; questions: string[] }
   | { type: "error"; code: string; message: string; retryAfterSeconds?: number }
   | { type: "done"; model: string; steps: number; usage: { inputTokens: number; outputTokens: number } };
+
+/** A file the agent was asked for; the dashboard's `/export` route renders it with these filters. */
+export type AgentExport = {
+  format: "pdf" | "xlsx" | "csv" | "json" | "md";
+  preset?: string;
+  from?: string;
+  to?: string;
+  channel?: string;
+  country?: string;
+  tables?: string[];
+};
 
 /** A model the agent can answer with (ZenMux id), as `GET /agent/models` lists it. */
 export type AgentModel = { id: string; label: string; description: string };

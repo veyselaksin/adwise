@@ -1,0 +1,27 @@
+# Build context is the repo root (pnpm workspace). Keep it small and secret-free.
+.git
+**/node_modules
+**/.next
+**/dist
+**/*.tsbuildinfo
+**/next-env.d.ts
+apps/server/src/generated
+apps/server/data
+
+# Secrets and local instructions never go into an image.
+**/.env
+**/.env.*
+!**/.env.example
+**/AGENTS.md
+**/CLAUDE.md
+.claude
+
+# Case data is mounted at runtime, never baked in.
+**/*.db
+**/*.db-*
+
+**/.DS_Store
+**/*.log
+docker-compose*.yml
+**/Dockerfile
+.dockerignore

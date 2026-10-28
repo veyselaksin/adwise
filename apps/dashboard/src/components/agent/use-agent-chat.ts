@@ -1,18 +1,24 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { AgentEvent, ChatMessage } from "@/lib/types";
+import type { AgentEvent, AgentExport, ChatMessage } from "@/lib/types";
 
 export type AgentStep = { id: string; label: string; status: "running" | "ok" | "failed"; summary?: string };
+
+/** A file the agent made: a link to the dashboard's own export, so it matches the overview. */
+export type AgentDownload = { id: string; label: string; format: AgentExport["format"]; href: string };
 
 export type AgentTurn = {
   id: string;
   question: string;
   steps: AgentStep[];
   notes: string[];
+  downloads: AgentDownload[];
   /** Text still being written; it becomes the answer, or a note if a lookup follows. */
   draft: string;
   answer?: string;
+  /** Suggested next questions, sent after the answer. */
+  followUps?: string[];
   error?: { code: string; message: string };
   usage?: { model: string; steps: number; tokens: number };
   status: "streaming" | "done" | "stopped";
@@ -25,7 +31,7 @@ function readStored(): AgentTurn[] {
   try {
     const turns = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]") as AgentTurn[];
     // A reload mid-answer leaves a turn that will never finish.
-    return turns.map((t) => ({ ...t, draft: t.draft ?? "", ...(t.status === "streaming" && { status: "stopped" }) }));
+    return turns.map((t) => ({ ...t, draft: t.draft ?? "", downloads: t.downloads ?? [], ...(t.status === "streaming" && { status: "stopped" }) }));
   } catch {
     return [];
   }
@@ -38,6 +44,22 @@ const toHistory = (turns: AgentTurn[]): ChatMessage[] =>
     ...(t.answer ? [{ role: "assistant" as const, text: t.answer }] : []),
   ]);
 
+/** The export the agent asked for, as a URL on the dashboard's `/export` route. */
+function exportHref({ format, preset, from, to, channel, country, tables }: AgentExport): string {
+  const params = new URLSearchParams({ format });
+  if (from && to) {
+    params.set("range", "custom");
+    params.set("from", from);
+    params.set("to", to);
+  } else if (preset) {
+    params.set("range", preset);
+  }
+  if (channel) params.set("channel", channel);
+  if (country) params.set("country", country);
+  if (tables?.length) params.set("tables", tables.join(","));
+  return `/export?${params}`;
+}
+
 function applyEvent(turn: AgentTurn, event: AgentEvent): AgentTurn {
   switch (event.type) {
     case "tool_call":
@@ -49,12 +71,19 @@ function applyEvent(turn: AgentTurn, event: AgentEvent): AgentTurn {
           s.id === event.id ? { ...s, status: event.ok ? "ok" : "failed", summary: event.summary } : s,
         ),
       };
+    case "export":
+      return {
+        ...turn,
+        downloads: [...turn.downloads, { id: event.id, label: event.label, format: event.format, href: exportHref(event) }],
+      };
     case "text_delta":
       return { ...turn, draft: turn.draft + event.text };
     case "note":
       return { ...turn, notes: [...turn.notes, event.text], draft: "" };
     case "answer":
       return { ...turn, answer: event.text, draft: "" };
+    case "follow_ups":
+      return { ...turn, followUps: event.questions };
     case "error":
       return { ...turn, error: { code: event.code, message: event.message } };
     case "done":
@@ -95,7 +124,7 @@ export function useAgentChat(model?: string) {
         setTurns((all) => all.map((t) => (t.id === id ? fn(t) : t)));
       const fail = (code: string, message: string) =>
         update((t) => ({ ...t, status: "done", error: { code, message } }));
-      setTurns((all) => [...all, { id, question: text, steps: [], notes: [], draft: "", status: "streaming" }]);
+      setTurns((all) => [...all, { id, question: text, steps: [], notes: [], downloads: [], draft: "", status: "streaming" }]);
 
       const abort = new AbortController();
       abortRef.current = abort;

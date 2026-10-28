@@ -5,7 +5,7 @@ import { buildApp } from "../src/app.js";
 import { ModelError, ZenMuxClient } from "../src/clients/zenmux.client.js";
 import { AGENT_MAX_STEPS, AGENT_RECENT_MESSAGES } from "../src/constants/agent.constant.js";
 import { TOOL_DECLARATIONS } from "../src/services/agent.tools.js";
-import { toMessages } from "../src/services/agent.service.js";
+import { splitFollowUps, toMessages } from "../src/services/agent.service.js";
 import { ReleasesService } from "../src/services/releases.service.js";
 import type { AgentEvent, ModelClient, ModelMessage, ModelRequest, ModelResponse } from "../src/types/agent.type.js";
 import { CASE_DIR, testEnv } from "./helpers.js";
@@ -80,7 +80,7 @@ describe("agent context", () => {
   it("declares tools as plain JSON Schema functions", () => {
     assert.deepEqual(
       TOOL_DECLARATIONS.map((t) => t.function.name),
-      ["query_metrics", "list_entities", "get_budget_pacing", "get_releases"],
+      ["query_metrics", "list_entities", "get_budget_pacing", "get_releases", "export_report"],
     );
     const params = TOOL_DECLARATIONS[0]!.function.parameters as { type: string; properties: Record<string, { type: string; items?: { type?: string; enum?: string[] } }> };
     assert.equal(params.type, "object");
@@ -109,6 +109,17 @@ describe("agent context", () => {
     );
     assert.equal(messages.length, AGENT_RECENT_MESSAGES + 1);
     assert.equal(messages.at(-1)!.content, "Latest?");
+  });
+});
+
+describe("follow-up questions", () => {
+  it("reads the hidden block, numbered or bulleted, unclosed or not, and caps it", () => {
+    assert.deepEqual(splitFollowUps("Answer.\n<!-- follow-ups\n1. One?\n2) Two?\n* Three?\n- Four?\n-->"), {
+      answer: "Answer.",
+      followUps: ["One?", "Two?", "Three?"],
+    });
+    assert.deepEqual(splitFollowUps("Answer.\n<!-- follow-ups\n- Cut off?"), { answer: "Answer.", followUps: ["Cut off?"] });
+    assert.deepEqual(splitFollowUps("No block here."), { answer: "No block here.", followUps: [] });
   });
 });
 
@@ -208,6 +219,64 @@ describe("POST /agent/chat", () => {
       ],
     );
     assert.equal(out.at(-2)?.type, "answer");
+  });
+
+  it("hands an export to the dashboard as a download", async () => {
+    const model = new ScriptedModel((step) =>
+      step === 1 ? call("export_report", { format: "pdf", preset: "last_week", country: "US" }) : say("Your PDF is downloading."),
+    );
+    const out = events((await ask(await appWith(model), "Export last week in the US as PDF")).payload);
+    assert.deepEqual(out.slice(0, 3), [
+      { type: "tool_call", id: "1.1", tool: "export_report", label: "Export PDF report · last week · US", args: { format: "pdf", preset: "last_week", country: "US" } },
+      { type: "tool_result", id: "1.1", ok: true, summary: "Download ready" },
+      { type: "export", id: "1.1", label: "Export PDF report · last week · US", format: "pdf", preset: "last_week", country: "US" },
+    ]);
+    assert.deepEqual((lastToolResult(model.requests[1]!) as { file: unknown }).file, { format: "pdf", preset: "last_week", country: "US" });
+  });
+
+  it("exports the dashboard's default period when none is named, and rejects half a range", async () => {
+    const model = new ScriptedModel((step) =>
+      step === 1
+        ? call("export_report", { format: "csv", from: "2026-10-01" })
+        : step === 2
+          ? call("export_report", { format: "xlsx", tables: ["ads", "ads"] })
+          : say("ok"),
+    );
+    const out = events((await ask(await appWith(model), "Excel please")).payload);
+    assert.deepEqual(
+      out.filter((e) => e.type === "tool_result").map((r) => [r.ok, r.summary]),
+      [
+        [false, "Give both `from` and `to`, or a `preset`."],
+        [true, "Download ready"],
+      ],
+    );
+    const exports = out.filter((e) => e.type === "export");
+    assert.deepEqual(exports, [
+      { type: "export", id: "2.1", label: "Export Excel workbook · last 14 days · ads, ads", format: "xlsx", preset: "last_14_days", tables: ["ads"] },
+    ]);
+  });
+
+  it("exports Markdown too", async () => {
+    const model = new ScriptedModel((step) => (step === 1 ? call("export_report", { format: "md", tables: ["countries"] }) : say("ok")));
+    const out = events((await ask(await appWith(model), "Write it as markdown")).payload);
+    assert.deepEqual(out.find((e) => e.type === "export"), {
+      type: "export",
+      id: "1.1",
+      label: "Export Markdown · last 14 days · countries",
+      format: "md",
+      preset: "last_14_days",
+      tables: ["countries"],
+    });
+  });
+
+  it("sends follow-up questions apart from the answer", async () => {
+    const text = "**You spent $61,556.50 last week.**\n\n<!-- follow-ups\n- How does that split by country?\n- Was CAC better than the week before?\n-->";
+    const model = new ScriptedModel(() => say(text));
+    const out = events((await ask(await appWith(model), "Spend last week?")).payload);
+    assert.deepEqual(out.slice(-3, -1), [
+      { type: "answer", text: "**You spent $61,556.50 last week.**" },
+      { type: "follow_ups", questions: ["How does that split by country?", "Was CAC better than the week before?"] },
+    ]);
   });
 
   it("forces an answer on the last step", async () => {

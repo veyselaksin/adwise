@@ -5,6 +5,8 @@ import {
   ArrowUpIcon,
   BotIcon,
   CheckIcon,
+  CornerDownRightIcon,
+  DownloadIcon,
   Loader2Icon,
   RotateCcwIcon,
   SparklesIcon,
@@ -18,7 +20,8 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { AgentMarkdown } from "./agent-markdown";
-import { type AgentStep, type AgentTurn, useAgentChat } from "./use-agent-chat";
+import { CopyButton } from "./copy-button";
+import { type AgentDownload, type AgentStep, type AgentTurn, useAgentChat } from "./use-agent-chat";
 import { useAgentModels } from "./use-agent-models";
 import { useSmoothText } from "./use-smooth-text";
 
@@ -124,6 +127,7 @@ export function AgentPanel({ open, onClose }: { open: boolean; onClose: () => vo
                   turn={turn}
                   modelLabel={turn.usage && (labels[turn.usage.model] ?? turn.usage.model)}
                   onRetry={i === turns.length - 1 ? retry : undefined}
+                  onAsk={i === turns.length - 1 && !busy ? ask : undefined}
                 />
               ))}
             </div>
@@ -218,7 +222,15 @@ function Intro({ onPick }: { onPick: (q: string) => void }) {
   );
 }
 
-function Turn({ turn, modelLabel, onRetry }: { turn: AgentTurn; modelLabel?: string; onRetry?: () => void }) {
+type TurnProps = {
+  turn: AgentTurn;
+  modelLabel?: string;
+  onRetry?: () => void;
+  /** Asks a follow-up; only the latest turn offers them. */
+  onAsk?: (question: string) => void;
+};
+
+function Turn({ turn, modelLabel, onRetry, onAsk }: TurnProps) {
   const working = turn.status === "streaming";
   return (
     <div className="flex flex-col gap-3">
@@ -255,7 +267,20 @@ function Turn({ turn, modelLabel, onRetry }: { turn: AgentTurn; modelLabel?: str
 
       {(turn.answer ?? turn.draft) && (
         // A note ends a text segment; the next one types in fresh.
-        <StreamedText key={turn.notes.length} text={turn.answer ?? turn.draft} streaming={working} />
+        <StreamedText key={turn.notes.length} text={turn.answer ?? hideFollowUps(turn.draft)} streaming={working} />
+      )}
+
+      {turn.downloads.length > 0 && (
+        <div className={cn(ENTER, "flex flex-wrap gap-2")}>
+          {turn.downloads.map((d) => (
+            <DownloadLink key={d.id} download={d} />
+          ))}
+          {turn.downloads
+            .filter((d) => d.format === "md")
+            .map((d) => (
+              <CopyButton key={`copy-${d.id}`} label="Copy Markdown" text={() => fetchText(d.href)} />
+            ))}
+        </div>
       )}
 
       {turn.error && (
@@ -281,11 +306,30 @@ function Turn({ turn, modelLabel, onRetry }: { turn: AgentTurn; modelLabel?: str
       )}
 
       {turn.usage && turn.answer && (
-        <p className={cn(ENTER, "text-[0.7rem] text-muted-foreground tabular-nums")}>
-          {modelLabel && `${modelLabel} · `}
-          {turn.usage.steps} model call{turn.usage.steps === 1 ? "" : "s"} · {formatTokens(turn.usage.tokens)}{" "}
-          tokens
-        </p>
+        <div className={cn(ENTER, "flex items-center justify-between gap-2")}>
+          <p className="text-[0.7rem] text-muted-foreground tabular-nums">
+            {modelLabel && `${modelLabel} · `}
+            {turn.usage.steps} model call{turn.usage.steps === 1 ? "" : "s"} · {formatTokens(turn.usage.tokens)}{" "}
+            tokens
+          </p>
+          <CopyButton label="Copy answer" iconOnly text={turn.answer} />
+        </div>
+      )}
+
+      {onAsk && turn.status === "done" && turn.answer && turn.followUps && turn.followUps.length > 0 && (
+        <div className={cn(ENTER, "flex flex-col items-start gap-1.5")} aria-label="Follow-up questions">
+          {turn.followUps.map((q) => (
+            <button
+              key={q}
+              type="button"
+              onClick={() => onAsk(q)}
+              className="flex items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-muted"
+            >
+              <CornerDownRightIcon className="mt-px size-3.5 shrink-0 text-muted-foreground" />
+              {q}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -337,6 +381,24 @@ function Step({ step }: { step: AgentStep }) {
   );
 }
 
+const FORMAT_NAMES: Record<AgentDownload["format"], string> = { pdf: "PDF", xlsx: "Excel", csv: "CSV", json: "JSON", md: "Markdown" };
+
+/** The file the agent prepared; it downloads when the user clicks. */
+function DownloadLink({ download }: { download: AgentDownload }) {
+  return (
+    <Button variant="outline" size="xs" nativeButton={false} render={<a href={download.href} download title={download.label} />}>
+      <DownloadIcon /> Download {FORMAT_NAMES[download.format]}
+    </Button>
+  );
+}
+
+/** The exported file's text; fails on an error response instead of copying its JSON. */
+async function fetchText(href: string): Promise<string> {
+  const res = await fetch(href);
+  if (!res.ok) throw new Error(`Export failed (${res.status})`);
+  return res.text();
+}
+
 function RetryButton({ onRetry }: { onRetry: () => void }) {
   return (
     <Button variant="outline" size="xs" onClick={onRetry} className="mt-1.5">
@@ -344,5 +406,11 @@ function RetryButton({ onRetry }: { onRetry: () => void }) {
     </Button>
   );
 }
+
+/**
+ * The answer as it streams, without the hidden follow-up block the model writes
+ * last (the server strips it from the final answer), even when half-written.
+ */
+const hideFollowUps = (text: string) => text.replace(/<!--[\s\S]*$/, "").replace(/<!?-?$/, "");
 
 const formatTokens = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));

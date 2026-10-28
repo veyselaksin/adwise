@@ -6,7 +6,7 @@ import { buildReport } from "@/lib/export/report";
 import { parseFilters } from "@/lib/filters";
 
 /**
- * GET /export?format=pdf|xlsx|csv|json plus the overview's own filter params,
+ * GET /export?format=pdf|xlsx|csv|json|md plus the overview's own filter params,
  * so the file matches the view it was downloaded from.
  * - `tables=campaigns,adsets,ads` limits the file to those tables (one card's export).
  * - CSV holds one table: `table`, else ads, else the first selected.

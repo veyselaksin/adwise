@@ -2,13 +2,14 @@ import Type, { type Static, type TObject } from "typebox";
 import Value from "typebox/value";
 import { AGENT_MAX_TOOL_ROWS } from "../constants/agent.constant.js";
 import { DATE_PATTERN } from "../constants/dates.constant.js";
+import { EXPORT_DEFAULT_PRESET, EXPORT_FORMAT_LABELS, EXPORT_FORMATS, EXPORT_TABLES } from "../constants/export.constant.js";
 import { METRIC_KEYS, METRICS } from "../constants/metrics.constant.js";
 import { toToolSchema } from "../lib/tool-schema.js";
 import { roundCents } from "../lib/money.js";
 import { AppError } from "../lib/response.js";
 import { literals } from "../schemas/common.schema.js";
 import { Dimension, MetricKey, RangePreset } from "../schemas/metrics.schema.js";
-import type { ToolDeclaration } from "../types/agent.type.js";
+import type { ExportRequest, ToolDeclaration } from "../types/agent.type.js";
 import type { DimensionFields, MetricKey as MetricKeyType, MetricRow } from "../types/metrics.type.js";
 import type { BudgetsService } from "./budgets.service.js";
 import type { EntitiesService } from "./entities.service.js";
@@ -22,8 +23,11 @@ export type ToolDeps = {
   releases: ReleasesService;
 };
 
-/** What a tool hands back: `data` goes to the model, `summary` to the user's step list. */
-export type ToolOutput = { ok: boolean; summary: string; data: Record<string, unknown> };
+/**
+ * What a tool hands back: `data` goes to the model, `summary` to the user's step
+ * list, and `export` (export_report only) to the dashboard as a download.
+ */
+export type ToolOutput = { ok: boolean; summary: string; data: Record<string, unknown>; export?: ExportRequest };
 
 type Tool<S extends TObject> = {
   name: string;
@@ -243,10 +247,72 @@ const getReleases = tool({
   },
 });
 
+/* ----------------------------------------------------------------- export */
+
+const ExportReportParams = Type.Object({
+  format: literals(EXPORT_FORMATS, { description: "pdf, xlsx (Excel), csv, json or md (Markdown tables the user can copy)" }),
+  preset: Type.Optional({
+    ...RangePreset,
+    description: `A named period. Use this or from/to; with neither, the dashboard's default (${EXPORT_DEFAULT_PRESET}).`,
+  }),
+  from: isoDate("First day, YYYY-MM-DD (with `to`, instead of preset)"),
+  to: isoDate("Last day, YYYY-MM-DD, inclusive"),
+  channel: Type.Optional(literals(["meta", "tiktok"], { description: "One channel; both when omitted" })),
+  country: Type.Optional(literals(["US", "GB", "DE", "BR"], { description: "One country; all when omitted" })),
+  tables: Type.Optional(
+    Type.Array(literals(EXPORT_TABLES), {
+      minItems: 1,
+      maxItems: EXPORT_TABLES.length,
+      description:
+        "Only these report tables: kpis (headline totals), daily (trend), countries (channels within each country), campaigns, adsets, ads. All when omitted. CSV holds one table: ads unless you pass a single other one.",
+    }),
+  ),
+});
+
+const exportReport = tool({
+  name: "export_report",
+  description: [
+    "Prepares a file of the dashboard overview (PDF, Excel, CSV, JSON or Markdown) and shows the user a download button under your answer (Markdown also gets a copy button). Use it whenever the user asks to export, download or send them a file.",
+    "It holds the same tables and numbers as the dashboard for that period, channel and country; it can't be limited to single campaigns, ad sets or ads, nor to other metrics.",
+    "No data comes back to you: afterwards say in one sentence what the file holds (format, period, filters), not the numbers.",
+  ].join(" "),
+  params: ExportReportParams,
+  label: (a) =>
+    [
+      `Export ${EXPORT_FORMAT_LABELS[a.format]}`,
+      a.from && a.to ? `${a.from} → ${a.to}` : (a.preset ?? EXPORT_DEFAULT_PRESET).replaceAll("_", " "),
+      a.channel,
+      a.country,
+      a.tables?.join(", "),
+    ]
+      .filter(Boolean)
+      .join(" · "),
+  run: async (a) => {
+    if (!a.preset && (a.from || a.to)) {
+      if (!(a.from && a.to)) throw new AppError(400, "MISSING_RANGE", "Give both `from` and `to`, or a `preset`.");
+      if (a.from > a.to) throw new AppError(400, "INVALID_RANGE", "`from` must not be after `to`.");
+    }
+    const range = a.preset ? { preset: a.preset } : a.from && a.to ? { from: a.from, to: a.to } : { preset: EXPORT_DEFAULT_PRESET };
+    const request: ExportRequest = {
+      format: a.format,
+      ...range,
+      ...(a.channel && { channel: a.channel }),
+      ...(a.country && { country: a.country }),
+      ...(a.tables?.length && { tables: [...new Set(a.tables)] }),
+    };
+    return {
+      ok: true,
+      summary: "Download ready",
+      data: { status: "A download button for this file is shown under your answer.", file: request },
+      export: request,
+    };
+  },
+});
+
 /* ------------------------------------------------------------------ index */
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- each entry keeps its own params type
-const TOOLS: Tool<any>[] = [queryMetrics, listEntities, budgetPacing, getReleases];
+const TOOLS: Tool<any>[] = [queryMetrics, listEntities, budgetPacing, getReleases, exportReport];
 
 export const TOOL_DECLARATIONS: ToolDeclaration[] = TOOLS.map((t) => ({
   type: "function",
