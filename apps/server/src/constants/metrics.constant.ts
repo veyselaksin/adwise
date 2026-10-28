@@ -1,10 +1,11 @@
 /**
  * Metric definitions from the team's glossary. The dashboard and the agent both
- * read numbers through this module, so a metric means the same thing everywhere.
+ * read numbers through these, so a metric means the same thing everywhere.
  *
  * Derived metrics are always a ratio of sums over the whole group, never an
  * average of daily ratios.
  */
+import type { BaseMetric, DerivedMetric, MetricDefinition, MetricInfo, MetricKey } from "../types/metrics.js";
 
 /** Additive columns summed straight from `ads_daily`. */
 export const BASE_METRICS = [
@@ -17,39 +18,28 @@ export const BASE_METRICS = [
   "subscriptions",
   "d7_revenue",
 ] as const;
-export type BaseMetric = (typeof BASE_METRICS)[number];
 
 export const DERIVED_METRICS = ["cpi", "cac", "cost_per_trial", "trial_to_sub", "d7_roas", "ctr"] as const;
-export type DerivedMetric = (typeof DERIVED_METRICS)[number];
 
-export type MetricKey = BaseMetric | DerivedMetric;
+export const METRIC_KEYS = [...BASE_METRICS, ...DERIVED_METRICS] as MetricKey[];
 
-export type Unit = "usd" | "count" | "ratio";
+/** Ways to split a query's rows. */
+export const DIMENSIONS = [
+  "date",
+  "week",
+  "month",
+  "channel",
+  "country",
+  "campaign",
+  "adset",
+  "ad",
+  "creative_type",
+] as const;
 
-type MetricInfo = {
-  label: string;
-  unit: Unit;
-  /** Which direction is good, so the UI can color changes. */
-  better: "higher" | "lower" | "neutral";
-  /**
-   * An install day's value keeps changing until it is this many days old,
-   * because trials end and revenue arrives after the install. Younger days are
-   * "provisional". 0 means final as soon as the day is loaded.
-   */
-  finalAfterDays: number;
-};
+export const TIME_DIMENSIONS = new Set<string>(["date", "week", "month"]);
 
-/** SQL column behind each base metric. */
-export const BASE_COLUMNS: Record<BaseMetric, string> = {
-  spend: "spend_usd",
-  impressions: "impressions",
-  clicks: "clicks",
-  installs: "installs",
-  trials: "trials",
-  trial_conversions: "trial_conversions",
-  subscriptions: "subscriptions",
-  d7_revenue: "d7_revenue_usd",
-};
+/** Most rows one query returns. */
+export const MAX_LIMIT = 500;
 
 /**
  * Maturity windows:
@@ -87,12 +77,7 @@ const DERIVED_INFO: Record<DerivedMetric, DerivedInfo> = {
   ctr: { label: "CTR", unit: "ratio", better: "higher", numerator: "clicks", denominator: "impressions" },
 };
 
-export type MetricDefinition = MetricInfo & {
-  key: MetricKey;
-  /** For derived metrics: `numerator ÷ denominator`. */
-  formula?: { numerator: BaseMetric; denominator: BaseMetric };
-};
-
+/** Every metric, with a derived metric final only once both of its inputs are. */
 export const METRICS: Record<MetricKey, MetricDefinition> = {
   ...(Object.fromEntries(BASE_METRICS.map((key) => [key, { key, ...BASE_INFO[key] }])) as Record<
     BaseMetric,
@@ -107,17 +92,4 @@ export const METRICS: Record<MetricKey, MetricDefinition> = {
   ) as Record<DerivedMetric, MetricDefinition>),
 };
 
-export const METRIC_KEYS = [...BASE_METRICS, ...DERIVED_METRICS] as MetricKey[];
-
-export type BaseTotals = Record<BaseMetric, number>;
-
-/** Computes every derived metric from summed base values; `null` when the denominator is 0. */
-export function deriveMetrics(totals: BaseTotals): Record<DerivedMetric, number | null> {
-  return Object.fromEntries(
-    DERIVED_METRICS.map((key) => {
-      const { numerator, denominator } = DERIVED_INFO[key];
-      const den = totals[denominator];
-      return [key, den === 0 ? null : totals[numerator] / den];
-    }),
-  ) as Record<DerivedMetric, number | null>;
-}
+export const MONEY_METRICS = new Set<string>(BASE_METRICS.filter((m) => METRICS[m].unit === "usd"));
