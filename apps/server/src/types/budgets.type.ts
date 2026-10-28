@@ -1,5 +1,5 @@
 import type { PACING_STATUSES } from "../constants/budgets.constant.js";
-import type { DateRange } from "./dates.js";
+import type { DateRange } from "./dates.type.js";
 
 export type PacingStatus = (typeof PACING_STATUSES)[number];
 

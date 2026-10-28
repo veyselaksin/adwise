@@ -155,4 +155,53 @@ describe("auth and metrics routes", () => {
       }
     });
   });
+
+  describe("GET /budgets/pacing", () => {
+    type Pacing = { adset_id: string; avg_daily_spend: number; pace: number; pacing: string };
+    const pacing = (query = "", headers: Record<string, string> = authed()) =>
+      app.inject({ method: "GET", url: `/budgets/pacing${query}`, headers });
+
+    it("compares the last 7 days' spend with each ad set's budget", async () => {
+      const res = await pacing();
+      assert.equal(res.statusCode, 200);
+      const body = res.json();
+      assert.equal(body.success, true);
+      assert.equal(body.message, "Budget pacing loaded");
+      assert.deepEqual(body.data.range, { from: "2026-10-08", to: "2026-10-14" });
+      assert.deepEqual(body.data.band, { under: 0.9, over: 1.1 });
+      assert.equal(body.data.adsets.length, 13);
+      assert.equal(body.data.campaigns.length, 7);
+
+      // GB_Broad_01 runs hottest: $524.42/day against a $490 budget.
+      const gb = body.data.adsets.find((a: Pacing) => a.adset_id === "as_1021");
+      assert.equal(gb.avg_daily_spend, 524.42);
+      assert.equal(gb.pace.toFixed(3), "1.070");
+      assert.equal(gb.pacing, "on_pace");
+      assert.ok(body.data.adsets.every((a: Pacing) => a.pacing === "on_pace"));
+    });
+
+    it("takes the window length from `days`", async () => {
+      const res = await pacing("?days=1");
+      assert.equal(res.statusCode, 200);
+      const { data } = res.json();
+      assert.deepEqual(data.range, { from: "2026-10-14", to: "2026-10-14" });
+      // GB_Broad_01 spent $415.10 yesterday: 85% of budget.
+      const gb = data.adsets.find((a: Pacing) => a.adset_id === "as_1021");
+      assert.equal(gb.pacing, "under");
+    });
+
+    it("requires a token", async () => {
+      const res = await pacing("", {});
+      assert.equal(res.statusCode, 401);
+      assert.equal(res.json().error.code, "UNAUTHORIZED");
+    });
+
+    it("validates `days`", async () => {
+      for (const query of ["?days=0", "?days=15", "?days=week"]) {
+        const res = await pacing(query);
+        assert.equal(res.statusCode, 400, query);
+        assert.equal(res.json().error.code, "VALIDATION_ERROR");
+      }
+    });
+  });
 });

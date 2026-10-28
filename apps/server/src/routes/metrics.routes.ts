@@ -1,21 +1,17 @@
 import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
-import { AppError, success } from "../lib/response.js";
-import { previousPeriod, RANGE_PRESETS, resolvePreset } from "../metrics/dates.js";
-import { METRIC_KEYS, METRICS } from "../metrics/definitions.js";
-import { DIMENSIONS } from "../metrics/query.js";
-import { ErrorRef, SuccessResponse } from "../schemas/common.js";
-import { Catalog, EntitiesSchema, MetricsQueryBody, MetricsResult } from "../schemas/metrics.js";
+import { metricsController } from "../controllers/metrics.controller.js";
+import { ErrorRef, SuccessResponse } from "../schemas/common.schema.js";
+import { Catalog, MetricsQueryBody, MetricsResult } from "../schemas/metrics.schema.js";
 
-const protectedRoute = { security: [{ bearerAuth: [] }] };
-
-const metrics: FastifyPluginAsyncTypebox = async (app) => {
+const metricsRoutes: FastifyPluginAsyncTypebox = async (app) => {
+  const controller = metricsController(app.services);
   app.addHook("onRequest", app.authenticate);
 
   app.get(
     "/metrics/catalog",
     {
       schema: {
-        ...protectedRoute,
+        security: [{ bearerAuth: [] }],
         tags: ["metrics"],
         summary: "Metric definitions and calendar",
         description:
@@ -26,34 +22,14 @@ const metrics: FastifyPluginAsyncTypebox = async (app) => {
         },
       },
     },
-    async () => {
-      const m = app.metrics;
-      return success(
-        {
-          today: m.today,
-          firstDataDate: m.firstDataDate,
-          lastDataDate: m.lastDataDate,
-          metrics: METRIC_KEYS.map((key) => {
-            const { formula, ...def } = METRICS[key];
-            return {
-              ...def,
-              ...(formula && { formula: `${formula.numerator} ÷ ${formula.denominator}` }),
-              lastFinalDate: m.lastFinalDate(key),
-            };
-          }),
-          dimensions: [...DIMENSIONS],
-          presets: RANGE_PRESETS.map((key) => ({ key, range: resolvePreset(key, m.today) })),
-        },
-        "Catalog loaded",
-      );
-    },
+    async () => controller.catalog(),
   );
 
   app.post(
     "/metrics/query",
     {
       schema: {
-        ...protectedRoute,
+        security: [{ bearerAuth: [] }],
         tags: ["metrics"],
         summary: "Query metrics",
         description: [
@@ -72,39 +48,8 @@ const metrics: FastifyPluginAsyncTypebox = async (app) => {
         },
       },
     },
-    async (req) => {
-      const { preset, range: explicit, compare, ...rest } = req.body;
-      const range = preset ? resolvePreset(preset, app.metrics.today) : explicit;
-      if (!range) throw new AppError(400, "MISSING_RANGE", "Give either `preset` or `range`");
-
-      const result = app.metrics.query({ ...rest, range });
-      const previous = compare
-        ? (() => {
-            const prevRange = previousPeriod(range);
-            return { range: prevRange, totals: app.metrics.query({ ...rest, range: prevRange }).totals };
-          })()
-        : undefined;
-      return success({ ...result, ...(previous && { previous }) }, "Metrics loaded");
-    },
-  );
-
-  app.get(
-    "/entities",
-    {
-      schema: {
-        ...protectedRoute,
-        tags: ["metrics"],
-        summary: "Campaigns, ad sets and ads",
-        description:
-          "Every campaign, ad set (with its daily budget) and ad (with creative type and current status), for filter lists and labels. Ad names repeat across ad sets, so show an ad with its ad set.",
-        response: {
-          200: SuccessResponse(EntitiesSchema, { title: "EntitiesResponse", message: "Entities loaded" }),
-          401: ErrorRef,
-        },
-      },
-    },
-    async () => success(app.metrics.entities(), "Entities loaded"),
+    async (req) => controller.query(req.body),
   );
 };
 
-export default metrics;
+export default metricsRoutes;

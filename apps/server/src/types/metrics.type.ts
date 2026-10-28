@@ -1,5 +1,5 @@
 import type { BASE_METRICS, DERIVED_METRICS, DIMENSIONS } from "../constants/metrics.constant.js";
-import type { DateRange, RangePreset } from "./dates.js";
+import type { DateRange, RangePreset } from "./dates.type.js";
 
 export type BaseMetric = (typeof BASE_METRICS)[number];
 export type DerivedMetric = (typeof DERIVED_METRICS)[number];

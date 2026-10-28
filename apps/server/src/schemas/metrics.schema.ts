@@ -1,20 +1,7 @@
-import Type, { type TSchemaOptions } from "typebox";
-import { DATE_PATTERN, RANGE_PRESETS } from "../metrics/dates.js";
-import { BASE_METRICS, DERIVED_METRICS, METRIC_KEYS } from "../metrics/definitions.js";
-import { DIMENSIONS, MAX_LIMIT } from "../metrics/query.js";
-
-const literals = <const T extends string[]>(values: readonly [...T], opts: TSchemaOptions = {}) =>
-  Type.Enum(values, opts);
-
-export const IsoDate = Type.String({ pattern: DATE_PATTERN, examples: ["2026-10-05"] });
-
-export const DateRange = Type.Object(
-  {
-    from: { ...IsoDate, description: "First install day, inclusive" },
-    to: { ...IsoDate, description: "Last install day, inclusive", examples: ["2026-10-11"] },
-  },
-  { title: "DateRange" },
-);
+import Type from "typebox";
+import { RANGE_PRESETS } from "../constants/dates.constant.js";
+import { BASE_METRICS, DERIVED_METRICS, DIMENSIONS, MAX_LIMIT, METRIC_KEYS } from "../constants/metrics.constant.js";
+import { DateRange, IsoDate, literals } from "./common.schema.js";
 
 export const MetricKey = literals(METRIC_KEYS, { title: "MetricKey", examples: ["cac"] });
 export const Dimension = literals(DIMENSIONS, { title: "Dimension", examples: ["channel"] });
@@ -171,39 +158,4 @@ export const Catalog = Type.Object(
     presets: Type.Array(Type.Object({ key: RangePreset, range: DateRange })),
   },
   { title: "Catalog" },
-);
-
-const status = Type.String({ examples: ["active"] });
-export const EntitiesSchema = Type.Object(
-  {
-    campaigns: Type.Array(
-      Type.Object({
-        id: Type.String({ examples: ["c_101"] }),
-        name: Type.String({ examples: ["LIV_META_US_Subs"] }),
-        channel: Type.String({ examples: ["meta"] }),
-        country: Type.String({ examples: ["US"] }),
-        status,
-      }),
-    ),
-    adsets: Type.Array(
-      Type.Object({
-        id: Type.String({ examples: ["as_1012"] }),
-        campaign_id: Type.String({ examples: ["c_101"] }),
-        name: Type.String({ examples: ["US_Broad_02"] }),
-        status,
-        daily_budget_usd: Type.Number({ examples: [1080] }),
-      }),
-    ),
-    ads: Type.Array(
-      Type.Object({
-        id: Type.String({ examples: ["ad_3001"] }),
-        adset_id: Type.String({ examples: ["as_1011"] }),
-        name: Type.String({ examples: ["Hero_Intro_v1"] }),
-        creative_type: Type.String({ examples: ["video"] }),
-        status,
-        created_at: Type.String({ examples: ["2026-08-12T09:00:00Z"] }),
-      }),
-    ),
-  },
-  { title: "Entities" },
 );

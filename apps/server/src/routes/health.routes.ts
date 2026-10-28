@@ -1,21 +1,11 @@
 import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
-import Type from "typebox";
-import { version } from "../config/version.js";
-import { success } from "../lib/response.js";
-import { SuccessResponse } from "../schemas/common.js";
+import { healthController } from "../controllers/health.controller.js";
+import { SuccessResponse } from "../schemas/common.schema.js";
+import { Health } from "../schemas/health.schema.js";
 
-const Health = Type.Object({
-  status: Type.Literal("ok"),
-  uptime: Type.Number({ description: "Process uptime in seconds", examples: [11.03] }),
-  version: Type.String({ description: "API version", examples: ["v0.1.0"] }),
-});
+const healthRoutes: FastifyPluginAsyncTypebox = async (app) => {
+  const controller = healthController();
 
-const HealthResponse = SuccessResponse(Health, {
-  title: "HealthResponse",
-  message: "Service is healthy",
-});
-
-const health: FastifyPluginAsyncTypebox = async (app) => {
   app.get(
     "/health",
     {
@@ -24,15 +14,11 @@ const health: FastifyPluginAsyncTypebox = async (app) => {
         tags: ["health"],
         summary: "Health check",
         description: "Returns `ok` when the API process is up. Public, not rate limited; used by the host and the web app.",
-        response: { 200: HealthResponse },
+        response: { 200: SuccessResponse(Health, { title: "HealthResponse", message: "Service is healthy" }) },
       },
     },
-    async () =>
-      success(
-        { status: "ok" as const, uptime: Math.round(process.uptime() * 100) / 100, version: `v${version}` },
-        "Service is healthy",
-      ),
+    async () => controller.check(),
   );
 };
 
-export default health;
+export default healthRoutes;

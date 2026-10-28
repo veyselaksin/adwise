@@ -1,4 +1,5 @@
-import Type, { type Static, type TSchema } from "typebox";
+import Type, { type Static, type TSchema, type TSchemaOptions } from "typebox";
+import { DATE_PATTERN } from "../constants/dates.constant.js";
 
 /** Response envelope for successful requests; `data` is route-specific. */
 export const SuccessResponse = <T extends TSchema>(data: T, opts: { title: string; message?: string }) =>
@@ -27,3 +28,17 @@ export type ErrorResponse = Static<typeof ErrorResponse>;
 
 /** Reference for route schemas: `response: { 401: ErrorRef }`. */
 export const ErrorRef = Type.Unsafe<ErrorResponse>(Type.Ref("ErrorResponse"));
+
+/** A string enum, shown as a list of values in the docs. */
+export const literals = <const T extends string[]>(values: readonly [...T], opts: TSchemaOptions = {}) =>
+  Type.Enum(values, opts);
+
+export const IsoDate = Type.String({ pattern: DATE_PATTERN, examples: ["2026-10-05"] });
+
+export const DateRange = Type.Object(
+  {
+    from: { ...IsoDate, description: "First install day, inclusive" },
+    to: { ...IsoDate, description: "Last install day, inclusive", examples: ["2026-10-11"] },
+  },
+  { title: "DateRange" },
+);
