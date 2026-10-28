@@ -65,10 +65,12 @@ export type MetricsResult = {
   previous?: { range: DateRange; totals: MetricRow };
 };
 
+export type Unit = "usd" | "count" | "ratio";
+
 export type MetricDefinition = {
   key: MetricKey;
   label: string;
-  unit: "usd" | "count" | "ratio";
+  unit: Unit;
   better: "higher" | "lower" | "neutral";
   formula?: string;
   finalAfterDays: number;
@@ -107,3 +109,35 @@ export type MetricsQuery = {
   limit?: number;
   compare?: boolean;
 };
+
+export type PacingStatus = "on_pace" | "over" | "under" | "paused";
+
+export type PacingFields = {
+  daily_budget_usd: number;
+  spend: number;
+  avg_daily_spend: number;
+  last_day_spend: number;
+  /** avg_daily_spend ÷ daily_budget_usd; null without a budget. */
+  pace: number | null;
+  pacing: PacingStatus;
+};
+
+export type BudgetPacing = {
+  range: DateRange;
+  days: number;
+  band: { under: number; over: number };
+  adsets: ({ adset_id: string; adset_name: string; campaign_id: string; status: string } & PacingFields)[];
+  campaigns: ({ campaign_id: string; campaign_name: string; channel: string; country: string } & PacingFields)[];
+};
+
+/** One message of an agent conversation, as the API expects it. */
+export type ChatMessage = { role: "user" | "assistant"; text: string };
+
+/** What `POST /agent/chat` streams, one JSON object per line. */
+export type AgentEvent =
+  | { type: "tool_call"; id: string; tool: string; label: string; args: Record<string, unknown> }
+  | { type: "tool_result"; id: string; ok: boolean; summary: string }
+  | { type: "note"; text: string }
+  | { type: "answer"; text: string }
+  | { type: "error"; code: string; message: string; retryAfterSeconds?: number }
+  | { type: "done"; steps: number; usage: { inputTokens: number; outputTokens: number } };
