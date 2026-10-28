@@ -33,6 +33,8 @@ type Tool<S extends TObject> = {
   name: string;
   description: string;
   params: S;
+  /** Only in the dashboard's agent, not over MCP (the result is a dashboard download). */
+  dashboardOnly?: boolean;
   /** One line for the step list, e.g. "CAC by ad set · US · 2026-10-01 → 2026-10-11". */
   label: (args: Static<S>) => string;
   run: (args: Static<S>, deps: ToolDeps) => Promise<ToolOutput>;
@@ -277,6 +279,7 @@ const exportReport = tool({
     "No data comes back to you: afterwards say in one sentence what the file holds (format, period, filters), not the numbers.",
   ].join(" "),
   params: ExportReportParams,
+  dashboardOnly: true,
   label: (a) =>
     [
       `Export ${EXPORT_FORMAT_LABELS[a.format]}`,
@@ -322,6 +325,11 @@ export const TOOL_DECLARATIONS: ToolDeclaration[] = TOOLS.map((t) => ({
     parameters: toToolSchema(t.params as unknown as Record<string, unknown>),
   },
 }));
+
+/** The tools an outside assistant gets over MCP: all but the dashboard-only ones. */
+export const MCP_TOOL_DECLARATIONS = TOOL_DECLARATIONS.filter(
+  (d) => !TOOLS.find((t) => t.name === d.function.name)!.dashboardOnly,
+);
 
 /** Validates the model's arguments and runs the tool. Bad input comes back as an error the model can fix. */
 export async function runTool(name: string, args: Record<string, unknown>, deps: ToolDeps): Promise<ToolOutput> {

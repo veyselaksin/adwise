@@ -4,6 +4,7 @@ import authRoutes from "./auth.routes.js";
 import budgetsRoutes from "./budgets.routes.js";
 import entitiesRoutes from "./entities.routes.js";
 import healthRoutes from "./health.routes.js";
+import mcpRoutes from "./mcp.routes.js";
 import metricsRoutes from "./metrics.routes.js";
 import rulesRoutes from "./rules.routes.js";
 
@@ -16,6 +17,7 @@ const routes: FastifyPluginAsyncTypebox = async (app) => {
   await app.register(budgetsRoutes);
   await app.register(agentRoutes);
   await app.register(rulesRoutes);
+  await app.register(mcpRoutes);
 };
 
 export default routes;

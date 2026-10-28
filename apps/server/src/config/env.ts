@@ -32,6 +32,11 @@ const EnvSchema = Type.Object({
   ZENMUX_API_KEY: Type.String({ default: "" }),
   /** The model that answers when the dashboard doesn't pick one; one of AGENT_MODELS. */
   AGENT_MODEL: literals(AGENT_MODEL_IDS, { default: AGENT_MODEL_IDS[0] }),
+  /**
+   * The MCP endpoint for outside assistants (ChatGPT) is served at /mcp/<MCP_SECRET>; the
+   * unguessable path is its only protection. Empty disables it. Generate: openssl rand -hex 32
+   */
+  MCP_SECRET: Type.Union([Type.Literal(""), Type.String({ pattern: "^[A-Za-z0-9_-]{32,}$" })], { default: "" }),
 });
 
 export type Env = Static<typeof EnvSchema>;

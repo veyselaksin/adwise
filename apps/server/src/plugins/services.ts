@@ -9,6 +9,7 @@ import { AuthService } from "../services/auth.service.js";
 import { BudgetsService } from "../services/budgets.service.js";
 import { EntitiesService } from "../services/entities.service.js";
 import { KnowledgeService } from "../services/knowledge.service.js";
+import { McpService } from "../services/mcp.service.js";
 import { MetricsService } from "../services/metrics.service.js";
 import { ReleasesService } from "../services/releases.service.js";
 import { RulesService } from "../services/rules.service.js";
@@ -23,6 +24,8 @@ export type Services = {
   rules: RulesService;
   /** null when ZENMUX_API_KEY isn't set. */
   agent: AgentService | null;
+  /** The agent's tools for outside assistants; served only when MCP_SECRET is set. */
+  mcp: McpService;
 };
 
 export type ServicesOptions = {
@@ -62,6 +65,7 @@ export default fp<ServicesOptions>(
       releases,
       rules,
       agent: model && new AgentService(model, { metrics, entities, budgets, releases }, knowledge, rules, app.log),
+      mcp: new McpService({ metrics, entities, budgets, releases }, knowledge, rules),
     });
   },
   { name: "services", dependencies: ["config", "auth", "database"] },
