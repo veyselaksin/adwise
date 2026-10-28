@@ -1,6 +1,7 @@
 # Dokploy "Docker Compose" service. Set the variables below in Dokploy's Environment
-# tab, and attach the public domain to `dashboard` (port 3000) in the Domains tab.
-# The API stays internal; the dashboard reaches it at http://server:4000.
+# tab, and attach the public domain to `dashboard` (port 4000) in the Domains tab.
+# The dashboard reaches the API at http://server:4001. For ChatGPT (MCP), also attach
+# a domain to `server` (port 4001) and set MCP_SECRET; otherwise the API stays internal.
 #
 # The case folder is never in git: copy it to the Dokploy host (e.g. with scp) and
 # set CASE_HOST_DIR to that path. It's mounted read-only.
@@ -12,7 +13,7 @@ services:
       dockerfile: apps/server/Dockerfile
     restart: unless-stopped
     expose:
-      - "4000"
+      - "4001"
     environment:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       CORS_ORIGIN: ${CORS_ORIGIN:?set to the dashboard URL}
@@ -27,6 +28,8 @@ services:
       CASE_DIR: /case
       ZENMUX_API_KEY: ${ZENMUX_API_KEY:-}
       AGENT_MODEL: ${AGENT_MODEL:-deepseek/deepseek-v4.1-flash}
+      # ChatGPT's MCP connector, at https://<api domain>/mcp/<MCP_SECRET>. Empty turns it off.
+      MCP_SECRET: ${MCP_SECRET:-}
     volumes:
       - ${CASE_HOST_DIR:?path to the case folder on the host}:/case:ro
       - rules:/app/apps/server/data
@@ -37,9 +40,9 @@ services:
       dockerfile: apps/dashboard/Dockerfile
     restart: unless-stopped
     expose:
-      - "3000"
+      - "4000"
     environment:
-      API_URL: http://server:4000
+      API_URL: http://server:4001
     depends_on:
       server:
         condition: service_healthy

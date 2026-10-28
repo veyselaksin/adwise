@@ -31,7 +31,7 @@ FROM node:${NODE_VERSION}-bookworm-slim AS runtime
 ENV NODE_ENV=production \
   NEXT_TELEMETRY_DISABLED=1 \
   HOSTNAME=0.0.0.0 \
-  PORT=3000
+  PORT=4000
 WORKDIR /app
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=prod-deps /app/apps/dashboard/node_modules ./apps/dashboard/node_modules
@@ -41,5 +41,5 @@ COPY apps/dashboard/public ./apps/dashboard/public
 RUN rm -rf apps/dashboard/.next/cache && mkdir apps/dashboard/.next/cache && chown node:node apps/dashboard/.next/cache
 USER node
 WORKDIR /app/apps/dashboard
-EXPOSE 3000
+EXPOSE 4000
 CMD ["node_modules/.bin/next", "start"]

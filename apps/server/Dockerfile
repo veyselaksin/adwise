@@ -32,7 +32,7 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
 FROM node:${NODE_VERSION}-bookworm-slim AS runtime
 ENV NODE_ENV=production \
   HOST=0.0.0.0 \
-  PORT=4000 \
+  PORT=4001 \
   RULES_PATH=/app/apps/server/data/team-rules.json
 WORKDIR /app
 COPY --from=prod-deps /app/node_modules ./node_modules
@@ -43,7 +43,7 @@ COPY apps/server/package.json ./apps/server/
 RUN mkdir -p apps/server/data && chown node:node apps/server/data
 USER node
 WORKDIR /app/apps/server
-EXPOSE 4000
+EXPOSE 4001
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||4000)+'/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||4001)+'/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
 CMD ["node", "dist/server.js"]
