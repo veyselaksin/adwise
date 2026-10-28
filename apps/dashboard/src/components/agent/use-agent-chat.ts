@@ -14,7 +14,7 @@ export type AgentTurn = {
   draft: string;
   answer?: string;
   error?: { code: string; message: string };
-  usage?: { steps: number; tokens: number };
+  usage?: { model: string; steps: number; tokens: number };
   status: "streaming" | "done" | "stopped";
 };
 
@@ -61,12 +61,13 @@ function applyEvent(turn: AgentTurn, event: AgentEvent): AgentTurn {
       return {
         ...turn,
         status: "done",
-        usage: { steps: event.steps, tokens: event.usage.inputTokens + event.usage.outputTokens },
+        usage: { model: event.model, steps: event.steps, tokens: event.usage.inputTokens + event.usage.outputTokens },
       };
   }
 }
 
-export function useAgentChat() {
+/** `model` is the agent model to ask with; undefined lets the server pick its default. */
+export function useAgentChat(model?: string) {
   // The panel only mounts in the browser, after the user opens it, so storage is safe to read here.
   const [turns, setTurns] = useState<AgentTurn[]>(readStored);
   const abortRef = useRef<AbortController | null>(null);
@@ -102,7 +103,7 @@ export function useAgentChat() {
         const res = await fetch("/agent/chat", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ messages }),
+          body: JSON.stringify({ messages, ...(model && { model }) }),
           signal: abort.signal,
         });
         // Without a session, the proxy redirects to the sign-in page.
@@ -135,7 +136,7 @@ export function useAgentChat() {
         if (abortRef.current === abort) abortRef.current = null;
       }
     },
-    [],
+    [model],
   );
 
   const ask = useCallback((question: string) => (busy ? undefined : send(turns, question)), [busy, send, turns]);

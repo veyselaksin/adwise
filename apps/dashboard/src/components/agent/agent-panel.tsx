@@ -3,6 +3,7 @@
 import {
   AlertCircleIcon,
   ArrowUpIcon,
+  BotIcon,
   CheckIcon,
   Loader2Icon,
   RotateCcwIcon,
@@ -13,10 +14,12 @@ import {
 } from "lucide-react";
 import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { AgentMarkdown } from "./agent-markdown";
 import { type AgentStep, type AgentTurn, useAgentChat } from "./use-agent-chat";
+import { useAgentModels } from "./use-agent-models";
 import { useSmoothText } from "./use-smooth-text";
 
 const MAX_QUESTION = 2000;
@@ -33,7 +36,9 @@ const SUGGESTIONS = [
 ];
 
 export function AgentPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { turns, busy, ask, stop, reset, retry } = useAgentChat();
+  const { models, model, setModel } = useAgentModels();
+  const { turns, busy, ask, stop, reset, retry } = useAgentChat(model);
+  const labels = Object.fromEntries(models.map((m) => [m.id, m.label]));
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -114,7 +119,12 @@ export function AgentPanel({ open, onClose }: { open: boolean; onClose: () => vo
           ) : (
             <div className="flex flex-col gap-6">
               {turns.map((turn, i) => (
-                <Turn key={turn.id} turn={turn} onRetry={i === turns.length - 1 ? retry : undefined} />
+                <Turn
+                  key={turn.id}
+                  turn={turn}
+                  modelLabel={turn.usage && (labels[turn.usage.model] ?? turn.usage.model)}
+                  onRetry={i === turns.length - 1 ? retry : undefined}
+                />
               ))}
             </div>
           )}
@@ -144,9 +154,39 @@ export function AgentPanel({ open, onClose }: { open: boolean; onClose: () => vo
             </Button>
           )}
         </div>
-        <p className="mt-1.5 text-[0.7rem] text-muted-foreground">
-          Answers come from the same data as the dashboard. Check the steps behind each one.
-        </p>
+        <div className="mt-1.5 flex items-center justify-between gap-2">
+          <p className="min-w-0 truncate text-[0.7rem] text-muted-foreground">Same data as the dashboard.</p>
+          {models.length > 0 && model && (
+            <Select
+              items={models.map((m) => ({ value: m.id, label: m.label }))}
+              value={model}
+              onValueChange={(v) => v && setModel(v)}
+              disabled={busy}
+            >
+              <SelectTrigger
+                size="sm"
+                aria-label="Model"
+                className="h-6 shrink-0 gap-1 border-transparent bg-transparent px-1.5 text-[0.7rem] text-muted-foreground hover:bg-muted hover:text-foreground dark:bg-transparent [&_svg:not([class*='size-'])]:size-3"
+              >
+                <BotIcon />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent side="top" align="end" sideOffset={6} alignItemWithTrigger={false} className="w-72 p-1">
+                <SelectGroup>
+                  <SelectLabel>Answer with</SelectLabel>
+                  {models.map((m) => (
+                    <SelectItem key={m.id} value={m.id} className="py-1.5">
+                      <span className="flex min-w-0 flex-col gap-0.5">
+                        <span className="font-medium">{m.label}</span>
+                        <span className="text-xs whitespace-normal text-muted-foreground">{m.description}</span>
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          )}
+        </div>
       </form>
     </aside>
   );
@@ -178,7 +218,7 @@ function Intro({ onPick }: { onPick: (q: string) => void }) {
   );
 }
 
-function Turn({ turn, onRetry }: { turn: AgentTurn; onRetry?: () => void }) {
+function Turn({ turn, modelLabel, onRetry }: { turn: AgentTurn; modelLabel?: string; onRetry?: () => void }) {
   const working = turn.status === "streaming";
   return (
     <div className="flex flex-col gap-3">
@@ -242,7 +282,9 @@ function Turn({ turn, onRetry }: { turn: AgentTurn; onRetry?: () => void }) {
 
       {turn.usage && turn.answer && (
         <p className={cn(ENTER, "text-[0.7rem] text-muted-foreground tabular-nums")}>
-          {turn.usage.steps} model call{turn.usage.steps === 1 ? "" : "s"} · {formatTokens(turn.usage.tokens)} tokens
+          {modelLabel && `${modelLabel} · `}
+          {turn.usage.steps} model call{turn.usage.steps === 1 ? "" : "s"} · {formatTokens(turn.usage.tokens)}{" "}
+          tokens
         </p>
       )}
     </div>

@@ -1,15 +1,22 @@
 import { Readable } from "node:stream";
 import type { FastifyReply } from "fastify";
-import { AGENT_MAX_QUESTION_CHARS } from "../constants/agent.constant.js";
+import { AGENT_MAX_QUESTION_CHARS, AGENT_MODELS } from "../constants/agent.constant.js";
+import { success } from "../lib/response.js";
 import { AppError } from "../lib/response.js";
 import type { Services } from "../plugins/services.js";
-import type { ChatMessage } from "../types/agent.type.js";
+import type { AgentModelId, ChatMessage } from "../types/agent.type.js";
 
-export const agentController = ({ agent }: Services) => ({
+export const agentController = ({ agent }: Services, defaultModel: AgentModelId) => ({
+  models: () =>
+    success(
+      { default: defaultModel, models: AGENT_MODELS.map(({ id, label, description }) => ({ id, label, description })) },
+      "Models loaded",
+    ),
+
   /** Streams the agent's steps and answer as NDJSON: one `AgentEvent` per line, ending with `done`. */
-  chat: async (body: { messages: ChatMessage[] }, reply: FastifyReply) => {
+  chat: async (body: { messages: ChatMessage[]; model?: AgentModelId }, reply: FastifyReply) => {
     if (!agent) {
-      throw new AppError(503, "AGENT_DISABLED", "The agent is off: GEMINI_API_KEY isn't set on the server.");
+      throw new AppError(503, "AGENT_DISABLED", "The agent is off: ZENMUX_API_KEY isn't set on the server.");
     }
     agent.validate(body.messages);
     if (body.messages.at(-1)!.text.length > AGENT_MAX_QUESTION_CHARS) {
@@ -22,7 +29,7 @@ export const agentController = ({ agent }: Services) => ({
       if (!reply.raw.writableFinished) abort.abort();
     });
     async function* lines() {
-      for await (const event of agent!.chat(body.messages, abort.signal)) yield `${JSON.stringify(event)}\n`;
+      for await (const event of agent!.chat(body.messages, { model: body.model ?? defaultModel, signal: abort.signal })) yield `${JSON.stringify(event)}\n`;
     }
     return reply
       .type("application/x-ndjson; charset=utf-8")

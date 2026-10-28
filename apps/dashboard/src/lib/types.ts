@@ -141,7 +141,12 @@ export type AgentEvent =
   | { type: "note"; text: string }
   | { type: "answer"; text: string }
   | { type: "error"; code: string; message: string; retryAfterSeconds?: number }
-  | { type: "done"; steps: number; usage: { inputTokens: number; outputTokens: number } };
+  | { type: "done"; model: string; steps: number; usage: { inputTokens: number; outputTokens: number } };
+
+/** A model the agent can answer with (ZenMux id), as `GET /agent/models` lists it. */
+export type AgentModel = { id: string; label: string; description: string };
+
+export type AgentModels = { default: string; models: AgentModel[] };
 
 /** A rule the team added on the Rules page; enabled rules go to the agent with every question. */
 export type Rule = { id: string; text: string; enabled: boolean; createdAt: string; updatedAt: string };

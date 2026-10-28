@@ -2,7 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE } from "./session";
-import type { BudgetPacing, Catalog, ChatMessage, Entities, MetricsQuery, MetricsResult, Rule } from "./types";
+import type { AgentModels, BudgetPacing, Catalog, ChatMessage, Entities, MetricsQuery, MetricsResult, Rule } from "./types";
 
 // Server-side only: the API URL and the session token never reach the browser.
 const API_URL = process.env.API_URL ?? "http://localhost:4000";
@@ -91,12 +91,18 @@ export const updateRule = (id: string, changes: { text?: string; enabled?: boole
 
 export const deleteRule = (id: string) => authed<Rule>(`/rules/${encodeURIComponent(id)}`, { method: "DELETE" });
 
+export const getAgentModels = () => authed<AgentModels>("/agent/models");
+
 /**
  * Asks the agent. Returns the API's response as is, because a successful one is
  * a stream (NDJSON) for the browser to read step by step; errors keep the envelope.
  * `null` when there is no session.
  */
-export async function askAgent(messages: ChatMessage[], signal: AbortSignal): Promise<Response | null> {
+export async function askAgent(
+  messages: ChatMessage[],
+  model: string | undefined,
+  signal: AbortSignal,
+): Promise<Response | null> {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) return null;
   try {
@@ -104,7 +110,7 @@ export async function askAgent(messages: ChatMessage[], signal: AbortSignal): Pr
       method: "POST",
       cache: "no-store",
       headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
-      body: JSON.stringify({ messages }),
+      body: JSON.stringify({ messages, ...(model && { model }) }),
       signal,
     });
   } catch (err) {

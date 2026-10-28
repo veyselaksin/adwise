@@ -12,7 +12,7 @@ class PromptRecorder implements ModelClient {
   // eslint-disable-next-line require-yield
   async *stream(req: ModelRequest): AsyncGenerator<string, ModelResponse> {
     this.systems.push(req.system);
-    return { content: { role: "model", parts: [{ text: "ok" }] }, usage: { inputTokens: 1, outputTokens: 1 } };
+    return { message: { role: "assistant", content: "ok" }, usage: { inputTokens: 1, outputTokens: 1 } };
   }
 }
 

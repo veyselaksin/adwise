@@ -1,5 +1,7 @@
 import Type, { type Static } from "typebox";
 import Value from "typebox/value";
+import { AGENT_MODEL_IDS } from "../constants/agent.constant.js";
+import { literals } from "../schemas/common.schema.js";
 
 const EnvSchema = Type.Object({
   NODE_ENV: Type.Union(
@@ -26,9 +28,10 @@ const EnvSchema = Type.Object({
   CASE_DIR: Type.String({ minLength: 1 }),
   /** Where the team rules added in the dashboard are saved (a JSON file the server writes). */
   RULES_PATH: Type.String({ minLength: 1, default: "data/team-rules.json" }),
-  /** Gemini API key for the agent. Empty disables the agent (its route answers 503 AGENT_DISABLED). */
-  GEMINI_API_KEY: Type.String({ default: "" }),
-  GEMINI_MODEL: Type.String({ minLength: 1, default: "gemini-3.5-flash" }),
+  /** ZenMux API key for the agent's models. Empty disables the agent (its route answers 503 AGENT_DISABLED). */
+  ZENMUX_API_KEY: Type.String({ default: "" }),
+  /** The model that answers when the dashboard doesn't pick one; one of AGENT_MODELS. */
+  AGENT_MODEL: literals(AGENT_MODEL_IDS, { default: AGENT_MODEL_IDS[0] }),
 });
 
 export type Env = Static<typeof EnvSchema>;

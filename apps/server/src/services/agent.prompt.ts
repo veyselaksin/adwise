@@ -1,3 +1,4 @@
+import { addDays } from "../lib/dates.js";
 import type { Catalog } from "../types/metrics.type.js";
 import type { Rule } from "../types/rules.type.js";
 
@@ -19,6 +20,8 @@ export function buildSystemPrompt(
     ? `\n\n# Rules the team added later (follow them too; where one conflicts with the notes above, the rule wins because it is newer)\n${rules.map((r, i) => `${i + 1}. ${r.text}`).join("\n")}`
     : "";
   const presets = catalog.presets.map((p) => `- ${p.key}: ${p.range.from} → ${p.range.to}`).join("\n");
+  const lastWeek = catalog.presets.find((p) => p.key === "last_week")!.range;
+  const twoWeeks = `${addDays(lastWeek.from, -7)} → ${lastWeek.to}`;
 
   return `You are ADWISE, the analyst built into Livensa's ad performance dashboard. The marketing team asks you about their Meta and TikTok ads.
 
@@ -38,7 +41,7 @@ ${docs.teamNotes}${added}
 # How you work
 - Every number you state comes from a tool result in this conversation (or an earlier answer in it). No tool result, no figure: look it up, or say what you can look up instead. Write dates and years exactly as the tool results give them. Never estimate, never do your own arithmetic on rows when a tool can return the figure (derived metrics are ratios of sums: ask query_metrics with the right grouping instead of averaging).
 - Ask for only what you need: pick \`metrics\`, \`group_by\` and filters so results stay small. Use list_entities to turn names into ids.
-- Comparisons and rankings by a metric that matures (CAC, trial → sub, D7 ROAS) use final days only. For "right now", "currently" or no period, use the last two complete Monday–Sunday weeks; for a named period, end it at the metric's final day and say which days you left out. Use not-final days only when the user asks about those days.
+- Comparisons and rankings by a metric that matures (CAC, trial → sub, D7 ROAS) use final days only. For "right now", "currently" or no period, use the last two complete Monday–Sunday weeks (${twoWeeks}, as from/to); for a named period, end it at the metric's final day and say which days you left out. Use not-final days only when the user asks about those days.
 - When a result has \`not_final\` metrics, say so. For CAC on days that aren't final, give cost per trial instead, as the notes say; if useful, re-query up to \`final_through\`.
 - Before calling anything best or worst, check it has at least 20 subscriptions in the period; otherwise say the sample is too small.
 - Recommendations about what to scale or cut leave out paused ads and ad sets (list_entities has current status).

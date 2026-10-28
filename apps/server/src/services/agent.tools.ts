@@ -3,7 +3,7 @@ import Value from "typebox/value";
 import { AGENT_MAX_TOOL_ROWS } from "../constants/agent.constant.js";
 import { DATE_PATTERN } from "../constants/dates.constant.js";
 import { METRIC_KEYS, METRICS } from "../constants/metrics.constant.js";
-import { toGeminiSchema } from "../lib/gemini-schema.js";
+import { toToolSchema } from "../lib/tool-schema.js";
 import { roundCents } from "../lib/money.js";
 import { AppError } from "../lib/response.js";
 import { literals } from "../schemas/common.schema.js";
@@ -249,9 +249,12 @@ const getReleases = tool({
 const TOOLS: Tool<any>[] = [queryMetrics, listEntities, budgetPacing, getReleases];
 
 export const TOOL_DECLARATIONS: ToolDeclaration[] = TOOLS.map((t) => ({
-  name: t.name,
-  description: t.description,
-  parameters: toGeminiSchema(t.params as unknown as Record<string, unknown>),
+  type: "function",
+  function: {
+    name: t.name,
+    description: t.description,
+    parameters: toToolSchema(t.params as unknown as Record<string, unknown>),
+  },
 }));
 
 /** Validates the model's arguments and runs the tool. Bad input comes back as an error the model can fix. */

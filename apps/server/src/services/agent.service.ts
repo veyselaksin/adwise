@@ -1,8 +1,8 @@
 import type { FastifyBaseLogger } from "fastify";
-import { ModelError } from "../clients/gemini.client.js";
+import { ModelError } from "../clients/zenmux.client.js";
 import { AGENT_MAX_STEPS, AGENT_RECENT_MESSAGES } from "../constants/agent.constant.js";
 import { AppError } from "../lib/response.js";
-import type { AgentEvent, ChatMessage, ModelClient, ModelContent, ModelPart, ModelUsage } from "../types/agent.type.js";
+import type { AgentEvent, AgentModelId, ChatMessage, ModelClient, ModelMessage, ModelUsage } from "../types/agent.type.js";
 import { buildSystemPrompt } from "./agent.prompt.js";
 import { runTool, TOOL_DECLARATIONS, toolLabel, type ToolDeps } from "./agent.tools.js";
 import type { KnowledgeService } from "./knowledge.service.js";
@@ -33,8 +33,9 @@ export class AgentService {
     }
   }
 
-  async *chat(messages: ChatMessage[], signal?: AbortSignal): AsyncGenerator<AgentEvent> {
-    const contents = toContents(messages);
+  async *chat(messages: ChatMessage[], opts: { model: AgentModelId; signal?: AbortSignal }): AsyncGenerator<AgentEvent> {
+    const { model, signal } = opts;
+    const history = toMessages(messages);
     // Built per question, so a rule added on the Rules page applies from the next question.
     const system = buildSystemPrompt(this.deps.metrics.catalog(), this.knowledge, this.rules.active());
     const usage: ModelUsage = { inputTokens: 0, outputTokens: 0 };
@@ -45,8 +46,9 @@ export class AgentService {
         steps++;
         // The last step may not call tools, so every question ends in an answer.
         const stream = this.model.stream({
+          model,
           system,
-          contents,
+          messages: history,
           tools: TOOL_DECLARATIONS,
           allowTools: steps < AGENT_MAX_STEPS,
           signal,
@@ -58,18 +60,13 @@ export class AgentService {
           yield { type: "text_delta", text: next.value };
           next = await stream.next();
         }
-        const res = next.value;
-        usage.inputTokens += res.usage.inputTokens;
-        usage.outputTokens += res.usage.outputTokens;
-        contents.push(res.content);
+        const { message, usage: used } = next.value;
+        usage.inputTokens += used.inputTokens;
+        usage.outputTokens += used.outputTokens;
+        history.push(message);
 
-        const calls = res.content.parts.flatMap((p) => (p.functionCall ? [p.functionCall] : []));
-        const text = res.content.parts
-          .filter((p) => p.text && !p.thought)
-          .map((p) => p.text)
-          .join("")
-          .trim();
-
+        const calls = message.tool_calls ?? [];
+        const text = (message.content ?? "").trim();
         if (calls.length === 0) {
           if (!text) throw new ModelError("MODEL_ERROR", "The model returned an empty answer. Try rephrasing the question.");
           yield { type: "answer", text };
@@ -78,30 +75,45 @@ export class AgentService {
         if (text) yield { type: "note", text };
 
         const ids = calls.map((_, i) => `${steps}.${i + 1}`);
+        const args = calls.map((call) => parseArgs(call.function.arguments));
         for (const [i, call] of calls.entries()) {
-          yield { type: "tool_call", id: ids[i]!, tool: call.name, label: toolLabel(call.name, call.args ?? {}), args: call.args ?? {} };
+          yield { type: "tool_call", id: ids[i]!, tool: call.function.name, label: toolLabel(call.function.name, args[i] ?? {}), args: args[i] ?? {} };
         }
-        const outputs = await Promise.all(calls.map((call) => runTool(call.name, call.args ?? {}, this.deps)));
-        const responses: ModelPart[] = [];
+        const outputs = await Promise.all(
+          calls.map((call, i) =>
+            args[i]
+              ? runTool(call.function.name, args[i], this.deps)
+              : { ok: false, summary: "Invalid arguments", data: { error: "Arguments must be a JSON object" } },
+          ),
+        );
         for (const [i, call] of calls.entries()) {
           const out = outputs[i]!;
-          if (!out.ok) this.log.warn({ tool: call.name, args: call.args, error: out.data.error }, "Agent tool call failed");
+          if (!out.ok) this.log.warn({ tool: call.function.name, args: call.function.arguments, error: out.data.error }, "Agent tool call failed");
           yield { type: "tool_result", id: ids[i]!, ok: out.ok, summary: out.summary };
-          responses.push({ functionResponse: { ...(call.id && { id: call.id }), name: call.name, response: out.data } });
+          history.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(out.data) });
         }
-        contents.push({ role: "user", parts: responses });
       }
     } catch (err) {
       if (signal?.aborted) return;
       if (err instanceof ModelError) {
-        this.log.warn({ code: err.code, detail: err.detail }, "Agent model call failed");
+        this.log.warn({ model, code: err.code, detail: err.detail }, "Agent model call failed");
         yield { type: "error", code: err.code, message: err.message, ...(err.retryAfterSeconds && { retryAfterSeconds: err.retryAfterSeconds }) };
       } else {
-        this.log.error({ err }, "Agent failed");
+        this.log.error({ err, model }, "Agent failed");
         yield { type: "error", code: "AGENT_FAILED", message: "Something went wrong while answering. Try again." };
       }
     }
-    yield { type: "done", steps, usage };
+    yield { type: "done", model, steps, usage };
+  }
+}
+
+/** The model's tool arguments, a JSON string; null when they aren't a JSON object. */
+function parseArgs(json: string): Record<string, unknown> | null {
+  try {
+    const value = JSON.parse(json || "{}") as unknown;
+    return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+  } catch {
+    return null;
   }
 }
 
@@ -111,25 +123,24 @@ export class AgentService {
  * lead with the answer), so long chats keep working at a flat cost. Tool
  * results from earlier questions are never resent.
  */
-export function toContents(messages: ChatMessage[]): ModelContent[] {
+export function toMessages(messages: ChatMessage[]): ModelMessage[] {
   const recent = messages.slice(-AGENT_RECENT_MESSAGES);
   const older = messages.slice(0, Math.max(0, messages.length - AGENT_RECENT_MESSAGES));
-  const contents: ModelContent[] = [];
+  const out: ModelMessage[] = [];
 
   if (older.length > 0) {
     const digest = older
       .map((m) => (m.role === "user" ? `Q: ${clip(m.text, 300)}` : `A: ${leadSentence(m.text)}`))
       .join("\n");
-    contents.push({ role: "user", parts: [{ text: `Earlier in this conversation (shortened):\n${digest}` }] });
+    out.push({ role: "user", content: `Earlier in this conversation (shortened):\n${digest}` });
   }
   for (const m of recent) {
-    const role = m.role === "user" ? "user" : "model";
-    const last = contents.at(-1);
-    // Gemini expects turns to alternate; merge neighbours from the same side.
-    if (last?.role === role) last.parts.push({ text: m.text });
-    else contents.push({ role, parts: [{ text: m.text }] });
+    const last = out.at(-1);
+    // Some providers expect turns to alternate; merge neighbours from the same side.
+    if (last && last.role === m.role) last.content = `${last.content ?? ""}\n\n${m.text}`;
+    else out.push(m.role === "user" ? { role: "user", content: m.text } : { role: "assistant", content: m.text });
   }
-  return contents;
+  return out;
 }
 
 const clip = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1)}…` : text);

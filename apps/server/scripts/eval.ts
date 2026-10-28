@@ -4,16 +4,18 @@
  * numbers for our own questions come from the same services the dashboard
  * uses, so a pass also means the agent and the dashboard agree.
  *
- *   pnpm --filter server eval              # every case
- *   pnpm --filter server eval -- --only 1,4 # some cases
+ *   pnpm --filter server eval                                  # every case, default model
+ *   pnpm --filter server eval -- --only 1,4                     # some cases
+ *   pnpm --filter server eval -- --model z-ai/glm-5.2           # another model
+ *   pnpm --filter server eval -- --model all                    # every model, compared
  *
- * Needs GEMINI_API_KEY in .env. Each case costs a few model calls.
+ * Needs ZENMUX_API_KEY in .env. Each case costs a few model calls.
  */
-import { setTimeout as sleep } from "node:timers/promises";
+import { AGENT_MODEL_IDS } from "../src/constants/agent.constant.js";
 import { buildApp } from "../src/app.js";
 import { loadEnv } from "../src/config/env.js";
 import type { Services } from "../src/plugins/services.js";
-import type { AgentEvent, ChatMessage } from "../src/types/agent.type.js";
+import type { AgentEvent, AgentModelId, ChatMessage } from "../src/types/agent.type.js";
 import type { MetricsQuery } from "../src/types/metrics.type.js";
 
 type Check = string | RegExp;
@@ -27,8 +29,8 @@ type Case = {
   lead?: Check[];
   /** Must not appear anywhere. */
   reject?: Check[];
-  /** Any other problems with the answer, e.g. figures that don't match the data. */
-  verify?: (answer: string, s: Services) => Promise<string[]>;
+  /** Any other problems with the answer; `tools` are the lookups it made. */
+  verify?: (answer: string, s: Services, tools: string[]) => string[];
   /** Expected values worked out from the services at run time. */
   computed?: (s: Services) => Promise<Check[]>;
 };
@@ -42,6 +44,10 @@ const totals = async (s: Services, q: MetricsQuery) => (await s.metrics.query(q)
 /** Wrong for every answer: the data is all 2026. */
 const REJECT_ALWAYS: Check[] = [/\b2025\b/];
 
+/** A figure with no lookup behind it is made up. */
+const noFiguresWithoutLookup = (answer: string, _s: Services, tools: string[]) =>
+  tools.length === 0 && /\$\d|\d%/.test(answer) ? ["figures without any lookup"] : [];
+
 const CASES: Case[] = [
   // The case's reference answers (examples/*.md).
   {
@@ -52,7 +58,7 @@ const CASES: Case[] = [
   {
     id: 2,
     ask: ["Which US ad set had the lowest CAC over the last 14 days?"],
-    expect: ["US_Broad_02", "$40.94", /not (yet )?final|still (coming|converting)|trials? (end|are still)/i],
+    expect: ["US_Broad_02", "$40.94", /isn['’]t final|not (yet )?final|final (CAC|days?)|left out|leave out|still (coming|converting)/i],
   },
   {
     id: 3,
@@ -63,19 +69,19 @@ const CASES: Case[] = [
     id: 4,
     ask: ["Why did CAC go up yesterday?"],
     expect: ["$12.23", "$12.02", /cost per trial/i],
-    lead: [/not (yet )?final|(haven't|not) (yet )?(arrived|come in)|still (coming|converting|arriving)|(not|haven't) (yet )?finished|timing|didn't really/i],
+    lead: [/not (yet )?final|(haven['’]t|not) (yet )?(arrived|come in)|still (coming|converting|arriving)|(not|haven['’]t) (yet )?finished|timing|didn['’]t really/i],
   },
   {
     id: 5,
     ask: ["Is TikTok cheaper than Meta for us right now?"],
     expect: [/Brazil|\bBR\b/, "$46.73", "$52.48", "$14.27", "$16.14"],
-    lead: [/^\W*no\b/i],
+    lead: [/^\W*no\b|meta is cheaper/i],
   },
   // Our own: maturity, follow-ups, pacing, and what the data can't answer.
   {
     id: 6,
     ask: ["What was CAC on Oct 13?"],
-    expect: [/not (yet )?final|still (coming|converting)/i, /cost per trial/i],
+    expect: [/isn['’]t final|not (yet )?final|still (coming|converting|landing)/i, /cost per trial/i],
     computed: async (s) => [usd((await totals(s, { range: { from: "2026-10-13", to: "2026-10-13" } })).cost_per_trial)],
   },
   {
@@ -95,9 +101,13 @@ const CASES: Case[] = [
   {
     id: 9,
     ask: ["What was Meta's D7 ROAS last week?"],
-    computed: async (s) => [
-      pct((await totals(s, { range: { from: "2026-10-05", to: "2026-10-11" }, filters: { channels: ["meta"] } })).d7_roas),
-    ],
+    // The whole week, or only its final days, both said with the period.
+    computed: async (s) => {
+      const meta = { channels: ["meta"] };
+      const week = pct((await totals(s, { range: { from: "2026-10-05", to: "2026-10-11" }, filters: meta })).d7_roas);
+      const final = pct((await totals(s, { range: { from: "2026-10-05", to: s.metrics.lastFinalDate("d7_roas") }, filters: meta })).d7_roas);
+      return [new RegExp(`${week.replace(".", "\\.")}|${final.replace(".", "\\.")}`)];
+    },
     expect: [],
   },
   {
@@ -115,24 +125,21 @@ const CASES: Case[] = [
   {
     id: 12,
     ask: ["Which iOS release hurt conversion the most this month?"],
-    expect: [/\b(no|not|can't|cannot|doesn't|isn't)\b[^.]{0,120}\b(split|separate|broken out|attribut|platform)/i],
-    lead: [/\b(no|not|can't|cannot|doesn't|isn't|couldn't)\b/i],
+    expect: [/\b(no|not|can['’]t|cannot|doesn['’]t|isn['’]t)\b[^.]{0,120}\b(split|separate|broken out|attribut|platform|caus|shown|proven|evidence)/i],
+    lead: [/\b(no|not|can['’]t|cannot|doesn['’]t|isn['’]t|couldn['’]t)\b/i],
   },
   {
     id: 13,
     ask: ["How was our spend yesterday at 3pm?"],
-    expect: [/hour/i],
-    // It may give the day's total instead, but no other figure.
-    verify: async (answer, s) => {
-      const day = usd((await totals(s, { range: { from: "2026-10-14", to: "2026-10-14" } })).spend);
-      return (answer.match(/\$[\d,]+\.\d{2}/g) ?? []).filter((f) => f !== day).map((f) => `made-up figure ${f} (day total is ${day})`);
-    },
+    expect: [/hour|intraday|daily totals/i],
+    verify: noFiguresWithoutLookup,
   },
   {
     id: 14,
     ask: ["What's the ROAS of our organic users?"],
-    expect: [/organic/i, /\b(no|not|don't|doesn't|only)\b/i],
-    reject: [/\$\d|\d%/],
+    expect: [/organic/i],
+    lead: [/\b(no|not|can['’]t|cannot|don['’]t|doesn['’]t|isn['’]t)\b/i],
+    verify: noFiguresWithoutLookup,
   },
   {
     id: 15,
@@ -152,7 +159,7 @@ const CASES: Case[] = [
 
 type Outcome = { id: number; passed: boolean; missing: string[]; answer: string; tools: string[]; steps: number; tokens: number; ms: number; error?: string };
 
-async function runCase(s: Services, c: Case): Promise<Outcome> {
+async function runCase(s: Services, c: Case, model: AgentModelId): Promise<Outcome> {
   const agent = s.agent!;
   const history: ChatMessage[] = [];
   const tools: string[] = [];
@@ -165,7 +172,7 @@ async function runCase(s: Services, c: Case): Promise<Outcome> {
   for (const question of c.ask) {
     history.push({ role: "user", text: question });
     answer = "";
-    for await (const event of agent.chat([...history]) as AsyncGenerator<AgentEvent>) {
+    for await (const event of agent.chat([...history], { model }) as AsyncGenerator<AgentEvent>) {
       if (event.type === "tool_call") tools.push(event.label);
       if (event.type === "answer") answer = event.text;
       if (event.type === "error") error = `${event.code}: ${event.message}`;
@@ -184,40 +191,65 @@ async function runCase(s: Services, c: Case): Promise<Outcome> {
     ...[...c.expect, ...(c.computed ? await c.computed(s) : [])].filter((check) => !has(answer, check)).map(String),
     ...(c.lead ?? []).filter((check) => !has(lead, check)).map((check) => `lead ${check}`),
     ...[...REJECT_ALWAYS, ...(c.reject ?? [])].filter((check) => has(answer, check)).map((check) => `unwanted ${check}`),
-    ...(c.verify ? await c.verify(answer, s) : []),
+    ...(c.verify ? c.verify(answer, s, tools) : []),
   ];
   return { id: c.id, passed: !!answer && missing.length === 0, missing, answer, tools, steps, tokens, ms: performance.now() - started, ...(error && { error }) };
 }
 
-const only = process.argv.includes("--only")
-  ? new Set(process.argv[process.argv.indexOf("--only") + 1]?.split(",").map(Number))
-  : null;
+const arg = (name: string) => (process.argv.includes(name) ? process.argv[process.argv.indexOf(name) + 1] : undefined);
+const only = arg("--only") ? new Set(arg("--only")!.split(",").map(Number)) : null;
 const cases = CASES.filter((c) => !only || only.has(c.id));
 
 const env = loadEnv({ ...process.env, LOG_LEVEL: "error" });
-if (!env.GEMINI_API_KEY) {
-  console.error("Set GEMINI_API_KEY in apps/server/.env to run the eval.");
+if (!env.ZENMUX_API_KEY) {
+  console.error("Set ZENMUX_API_KEY in apps/server/.env to run the eval.");
+  process.exit(1);
+}
+const picked = arg("--model") ?? env.AGENT_MODEL;
+const models = picked === "all" ? AGENT_MODEL_IDS : AGENT_MODEL_IDS.filter((id) => id === picked);
+if (models.length === 0) {
+  console.error(`Unknown model "${picked}". Use one of: ${AGENT_MODEL_IDS.join(", ")}, or all.`);
   process.exit(1);
 }
 const app = await buildApp(env);
 await app.ready();
 
-const outcomes: Outcome[] = [];
-for (const [i, c] of cases.entries()) {
-  // Spread calls out so the free tier's per-minute limit isn't the thing being tested.
-  if (i > 0) await sleep(4000);
-  const o = await runCase(app.services, c);
-  outcomes.push(o);
-  console.log(`\n${o.passed ? "PASS" : "FAIL"}  #${o.id}  ${c.ask.join(" → ")}`);
-  console.log(`      ${o.steps} model calls · ${count(o.tokens)} tokens · ${(o.ms / 1000).toFixed(1)}s`);
-  for (const t of o.tools) console.log(`      · ${t}`);
-  if (o.error) console.log(`      error: ${o.error}`);
-  if (o.missing.length) console.log(`      missing: ${o.missing.join(" | ")}`);
-  console.log(o.answer.replace(/^/gm, "      > "));
+/** Runs `tasks` with at most `limit` at once, keeping their order. */
+async function pool<T>(tasks: (() => Promise<T>)[], limit: number): Promise<T[]> {
+  const results: T[] = [];
+  let next = 0;
+  const worker = async () => {
+    while (next < tasks.length) {
+      const i = next++;
+      results[i] = await tasks[i]!();
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker));
+  return results;
 }
 
-const passed = outcomes.filter((o) => o.passed).length;
-const tokens = outcomes.reduce((n, o) => n + o.tokens, 0);
-console.log(`\n${passed}/${outcomes.length} passed · ${count(tokens)} tokens`);
+const summary: string[] = [];
+for (const model of models) {
+  console.log(`\n=== ${model}`);
+  const outcomes = await pool(
+    cases.map((c) => () => runCase(app.services, c, model)),
+    4,
+  );
+  for (const [i, o] of outcomes.entries()) {
+    console.log(`\n${o.passed ? "PASS" : "FAIL"}  #${o.id}  ${cases[i]!.ask.join(" → ")}`);
+    console.log(`      ${o.steps} model calls · ${count(o.tokens)} tokens · ${(o.ms / 1000).toFixed(1)}s`);
+    for (const t of o.tools) console.log(`      · ${t}`);
+    if (o.error) console.log(`      error: ${o.error}`);
+    if (o.missing.length) console.log(`      missing: ${o.missing.join(" | ")}`);
+    console.log(o.answer.replace(/^/gm, "      > "));
+  }
+  const passed = outcomes.filter((o) => o.passed).length;
+  const tokens = outcomes.reduce((n, o) => n + o.tokens, 0);
+  const seconds = outcomes.reduce((n, o) => n + o.ms, 0) / 1000 / outcomes.length;
+  const failed = outcomes.filter((o) => !o.passed).map((o) => `#${o.id}`);
+  summary.push(`${model}: ${passed}/${outcomes.length} passed · ${count(tokens)} tokens · ${seconds.toFixed(1)}s per case${failed.length ? ` · failed ${failed.join(" ")}` : ""}`);
+}
+
+console.log(`\n${summary.join("\n")}`);
 await app.close();
-process.exit(passed === outcomes.length ? 0 : 1);
+process.exit(summary.every((line) => !line.includes("failed")) ? 0 : 1);

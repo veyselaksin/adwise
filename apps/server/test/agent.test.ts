@@ -2,20 +2,26 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 import { buildApp } from "../src/app.js";
-import { GeminiClient, ModelError } from "../src/clients/gemini.client.js";
+import { ModelError, ZenMuxClient } from "../src/clients/zenmux.client.js";
 import { AGENT_MAX_STEPS, AGENT_RECENT_MESSAGES } from "../src/constants/agent.constant.js";
 import { TOOL_DECLARATIONS } from "../src/services/agent.tools.js";
-import { toContents } from "../src/services/agent.service.js";
+import { toMessages } from "../src/services/agent.service.js";
 import { ReleasesService } from "../src/services/releases.service.js";
-import type { AgentEvent, ModelClient, ModelRequest, ModelResponse } from "../src/types/agent.type.js";
+import type { AgentEvent, ModelClient, ModelMessage, ModelRequest, ModelResponse } from "../src/types/agent.type.js";
 import { CASE_DIR, testEnv } from "./helpers.js";
 
 const usage = { inputTokens: 100, outputTokens: 10 };
 const call = (name: string, args: Record<string, unknown>): ModelResponse => ({
-  content: { role: "model", parts: [{ functionCall: { name, args } }] },
+  message: { role: "assistant", content: null, tool_calls: [{ id: `call_${name}`, type: "function", function: { name, arguments: JSON.stringify(args) } }] },
   usage,
 });
-const say = (text: string): ModelResponse => ({ content: { role: "model", parts: [{ text }] }, usage });
+const say = (text: string): ModelResponse => ({ message: { role: "assistant", content: text }, usage });
+/** The last tool result the model was sent. */
+const lastToolResult = (req: ModelRequest) => {
+  const msg = req.messages.at(-1) as Extract<ModelMessage, { role: "tool" }>;
+  assert.equal(msg.role, "tool");
+  return JSON.parse(msg.content) as Record<string, unknown>;
+};
 
 /**
  * Replays fixed responses, streaming their text in two pieces, and records every
@@ -27,11 +33,11 @@ class ScriptedModel implements ModelClient {
   async *stream(req: ModelRequest): AsyncGenerator<string, ModelResponse> {
     this.requests.push(structuredClone({ ...req, signal: undefined }));
     const res = this.script(this.requests.length, req);
-    for (const part of res.content.parts) {
-      if (!part.text) continue;
-      const half = Math.ceil(part.text.length / 2);
-      yield part.text.slice(0, half);
-      yield part.text.slice(half);
+    const text = res.message.content;
+    if (text) {
+      const half = Math.ceil(text.length / 2);
+      yield text.slice(0, half);
+      yield text.slice(half);
     }
     return res;
   }
@@ -71,16 +77,18 @@ describe("build logs", () => {
 });
 
 describe("agent context", () => {
-  it("declares tools in Gemini's schema format", () => {
+  it("declares tools as plain JSON Schema functions", () => {
     assert.deepEqual(
-      TOOL_DECLARATIONS.map((t) => t.name),
+      TOOL_DECLARATIONS.map((t) => t.function.name),
       ["query_metrics", "list_entities", "get_budget_pacing", "get_releases"],
     );
-    const params = TOOL_DECLARATIONS[0]!.parameters as { type: string; properties: Record<string, { type: string; items?: { enum?: string[] } }> };
-    assert.equal(params.type, "OBJECT");
-    assert.equal(params.properties.group_by?.type, "ARRAY");
+    const params = TOOL_DECLARATIONS[0]!.function.parameters as { type: string; properties: Record<string, { type: string; items?: { type?: string; enum?: string[] } }> };
+    assert.equal(params.type, "object");
+    assert.equal(params.properties.group_by?.type, "array");
+    assert.deepEqual(params.properties.group_by?.items?.type, "string");
     assert.ok(params.properties.group_by?.items?.enum?.includes("adset"));
-    assert.equal(params.properties.limit?.type, "INTEGER");
+    assert.equal(params.properties.limit?.type, "integer");
+    assert.doesNotMatch(JSON.stringify(TOOL_DECLARATIONS), /examples|~kind/);
   });
 
   it("keeps recent messages verbatim and shortens older ones", () => {
@@ -88,19 +96,19 @@ describe("agent context", () => {
       { role: "user" as const, text: `Question ${i}` },
       { role: "assistant" as const, text: `**Answer ${i} leads.** Then details ${i}.` },
     ]).flat();
-    const contents = toContents([...turns, { role: "user", text: "Latest?" }]);
+    const messages = toMessages([...turns, { role: "user", text: "Latest?" }]);
 
-    const digest = contents[0]!.parts[0]!.text!;
+    const digest = messages[0]!.content!;
     assert.match(digest, /^Earlier in this conversation/);
     assert.match(digest, /Q: Question 0\nA: Answer 0 leads\./);
     assert.doesNotMatch(digest, /details 0/);
-    // The digest is the user's turn; the verbatim tail starts with the model's.
+    // The digest is the user's turn; the verbatim tail starts with the assistant's.
     assert.deepEqual(
-      contents.map((c) => c.role),
-      ["user", "model", "user", "model", "user", "model", "user", "model", "user"],
+      messages.map((m) => m.role),
+      ["user", "assistant", "user", "assistant", "user", "assistant", "user", "assistant", "user"],
     );
-    assert.equal(contents.length, AGENT_RECENT_MESSAGES + 1);
-    assert.equal(contents.at(-1)!.parts[0]!.text, "Latest?");
+    assert.equal(messages.length, AGENT_RECENT_MESSAGES + 1);
+    assert.equal(messages.at(-1)!.content, "Latest?");
   });
 });
 
@@ -144,11 +152,12 @@ describe("POST /agent/chat", () => {
       { type: "text_delta", text: answer.slice(0, 18) },
       { type: "text_delta", text: answer.slice(18) },
       { type: "answer", text: answer },
-      { type: "done", steps: 2, usage: { inputTokens: 200, outputTokens: 20 } },
+      { type: "done", model: "deepseek/deepseek-v4.1-flash", steps: 2, usage: { inputTokens: 200, outputTokens: 20 } },
     ]);
+    assert.equal(model.requests[0]!.model, "deepseek/deepseek-v4.1-flash");
 
     // Reference answer 1, as the model saw it.
-    const result = model.requests[1]!.contents.at(-1)!.parts[0]!.functionResponse!.response as {
+    const result = lastToolResult(model.requests[1]!) as unknown as {
       range: unknown;
       rows: { channel: string; spend: number }[];
       totals: { spend: number };
@@ -168,7 +177,7 @@ describe("POST /agent/chat", () => {
       step === 1 ? call("query_metrics", { preset: "yesterday", metrics: ["cac", "cost_per_trial"] }) : say("ok"),
     );
     await ask(await appWith(model), "Why did CAC go up yesterday?");
-    const result = model.requests[1]!.contents.at(-1)!.parts[0]!.functionResponse!.response as Record<string, unknown>;
+    const result = lastToolResult(model.requests[1]!);
     assert.deepEqual(result.totals, { cac: 200.25, cost_per_trial: 12.23, not_final: ["cac"] });
     assert.deepEqual(result.final_through, { cac: "2026-10-11" });
   });
@@ -180,7 +189,7 @@ describe("POST /agent/chat", () => {
         : say("ok"),
     );
     await ask(await appWith(model), "TikTok trial to sub in October?");
-    const result = model.requests[1]!.contents.at(-1)!.parts[0]!.functionResponse!.response as { totals: { trial_to_sub: number } };
+    const result = lastToolResult(model.requests[1]!) as { totals: { trial_to_sub: number } };
     // Reference answer 3: 1,549 of 3,977 trials is 38.949…%, which reads 38.9%, not 39.0%.
     assert.equal(result.totals.trial_to_sub, 38.9);
   });
@@ -220,8 +229,47 @@ describe("POST /agent/chat", () => {
     assert.equal(res.statusCode, 200);
     assert.deepEqual(events(res.payload), [
       { type: "error", code: "RATE_LIMITED", message: "The model is rate limited. Try again in about 30 s.", retryAfterSeconds: 30 },
-      { type: "done", steps: 1, usage: { inputTokens: 0, outputTokens: 0 } },
+      { type: "done", model: "deepseek/deepseek-v4.1-flash", steps: 1, usage: { inputTokens: 0, outputTokens: 0 } },
     ]);
+  });
+
+  it("answers with the model the user picked, and lists the choices", async () => {
+    const model = new ScriptedModel(() => say("ok"));
+    const app = await appWith(model);
+    const res = await app.inject({
+      method: "POST",
+      url: "/agent/chat",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { messages: [{ role: "user", text: "Hi" }], model: "z-ai/glm-5.2" },
+    });
+    assert.equal(model.requests[0]!.model, "z-ai/glm-5.2");
+    assert.deepEqual(events(res.payload).at(-1), { type: "done", model: "z-ai/glm-5.2", steps: 1, usage });
+
+    const unknown = await app.inject({
+      method: "POST",
+      url: "/agent/chat",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { messages: [{ role: "user", text: "Hi" }], model: "some/other-model" },
+    });
+    assert.equal(unknown.statusCode, 400);
+
+    const list = (await app.inject({ url: "/agent/models", headers: { authorization: `Bearer ${token}` } })).json();
+    assert.equal(list.data.default, "deepseek/deepseek-v4.1-flash");
+    assert.deepEqual(
+      list.data.models.map((m: { id: string }) => m.id),
+      ["deepseek/deepseek-v4.1-flash", "z-ai/glm-5.2", "openai/gpt-6.1-sol"],
+    );
+  });
+
+  it("hands arguments that aren't JSON back to the model", async () => {
+    const model = new ScriptedModel((step) =>
+      step === 1
+        ? { message: { role: "assistant", content: null, tool_calls: [{ id: "c1", type: "function", function: { name: "query_metrics", arguments: "{oops" } }] }, usage }
+        : say("fixed"),
+    );
+    const out = events((await ask(await appWith(model), "x")).payload);
+    assert.deepEqual(out.find((e) => e.type === "tool_result"), { type: "tool_result", id: "1.1", ok: false, summary: "Invalid arguments" });
+    assert.match(lastToolResult(model.requests[1]!).error as string, /JSON object/);
   });
 
   it("answers 503 when no model is configured", async () => {
@@ -247,17 +295,21 @@ describe("POST /agent/chat", () => {
   });
 });
 
-describe("Gemini client", () => {
+describe("ZenMux client", () => {
   const sse = (...chunks: unknown[]) =>
-    new Response(chunks.map((c) => `data: ${JSON.stringify(c)}\r\n\r\n`).join(""), {
+    new Response([...chunks.map((c) => `data: ${JSON.stringify(c)}`), "data: [DONE]"].join("\r\n\r\n") + "\r\n\r\n", {
       headers: { "content-type": "text/event-stream" },
     });
+  const delta = (d: Record<string, unknown>, finish_reason: string | null = null) => ({ choices: [{ delta: d, finish_reason }] });
   const ok = () =>
     sse(
-      { candidates: [{ content: { role: "model", parts: [{ text: "Hel" }] } }] },
-      { candidates: [{ content: { role: "model", parts: [{ text: "lo", thoughtSignature: "sig" }] }, finishReason: "STOP" }], usageMetadata: { promptTokenCount: 5, candidatesTokenCount: 2 } },
+      delta({ role: "assistant", reasoning_content: "Think" }),
+      delta({ content: "Hel" }),
+      delta({ content: "lo" }, "stop"),
+      { choices: [], usage: { prompt_tokens: 5, completion_tokens: 2 } },
     );
-  const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status });
+  const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
+    new Response(JSON.stringify(body), { status, headers });
   /** Drains a stream: the text it yielded and what it returned. */
   const drain = async (gen: AsyncGenerator<string, ModelResponse>) => {
     const deltas: string[] = [];
@@ -268,22 +320,11 @@ describe("Gemini client", () => {
     }
     return { deltas, res: next.value };
   };
-  const retryInfo = (delay: string, quotaId = "GenerateRequestsPerMinutePerProjectPerModel-FreeTier") => ({
-    error: {
-      code: 429,
-      message: "quota",
-      details: [
-        { "@type": "type.googleapis.com/google.rpc.QuotaFailure", violations: [{ quotaId }] },
-        { "@type": "type.googleapis.com/google.rpc.RetryInfo", retryDelay: delay },
-      ],
-    },
-  });
   const client = (responses: Response[]) => {
     const calls: { url: string; init: RequestInit }[] = [];
     const waits: number[] = [];
-    const gemini = new GeminiClient({
+    const zenmux = new ZenMuxClient({
       apiKey: "test-key",
-      model: "gemini-test",
       fetch: async (url, init) => {
         calls.push({ url: String(url), init: init! });
         return responses.shift()!;
@@ -292,57 +333,94 @@ describe("Gemini client", () => {
         waits.push(ms);
       },
     });
-    return { gemini, calls, waits };
+    return { zenmux, calls, waits };
   };
-  const request = { system: "s", contents: [], tools: [], allowTools: true };
+  const request = (overrides: Partial<ModelRequest> = {}): ModelRequest => ({
+    model: "deepseek/deepseek-v4.1-flash",
+    system: "s",
+    messages: [{ role: "user", content: "q" }],
+    tools: [],
+    allowTools: true,
+    ...overrides,
+  });
+  const sent = (call: { init: RequestInit }) => JSON.parse(String(call.init.body)) as Record<string, unknown>;
 
-  it("streams text as it arrives and keeps the parts for the next call", async () => {
-    const { gemini, calls } = client([ok()]);
-    const { deltas, res } = await drain(gemini.stream(request));
+  it("streams text as it arrives and returns the whole message", async () => {
+    const { zenmux, calls } = client([ok()]);
+    const { deltas, res } = await drain(zenmux.stream(request()));
     assert.deepEqual(deltas, ["Hel", "lo"]);
-    assert.deepEqual(res.content.parts, [{ text: "Hel" }, { text: "lo", thoughtSignature: "sig" }]);
+    // The reasoning goes back with the message, but is never shown.
+    assert.deepEqual(res.message, { role: "assistant", content: "Hello", reasoning_content: "Think" });
     assert.deepEqual(res.usage, { inputTokens: 5, outputTokens: 2 });
-    assert.match(calls[0]!.url, /:streamGenerateContent\?alt=sse$/);
+    assert.equal(calls[0]!.url, "https://zenmux.ai/api/v1/chat/completions");
+    assert.equal((calls[0]!.init.headers as Record<string, string>).authorization, "Bearer test-key");
+    const body = sent(calls[0]!);
+    assert.equal(body.model, "deepseek/deepseek-v4.1-flash");
+    assert.deepEqual((body.messages as unknown[])[0], { role: "system", content: "s" });
+    assert.equal(body.stream, true);
+    assert.equal(body.temperature, 0.2);
   });
 
-  it("doesn't stream the model's thoughts", async () => {
-    const { gemini } = client([sse({ candidates: [{ content: { role: "model", parts: [{ text: "hmm", thought: true }, { text: "Answer" }] } }] })]);
-    assert.deepEqual((await drain(gemini.stream(request))).deltas, ["Answer"]);
+  it("assembles tool calls streamed in pieces", async () => {
+    const { zenmux } = client([
+      sse(
+        delta({ tool_calls: [{ index: 0, id: "call_a", type: "function", function: { name: "query_metrics", arguments: "" } }] }),
+        delta({ tool_calls: [{ index: 0, function: { arguments: '{"preset":' } }] }),
+        delta({ tool_calls: [{ index: 0, function: { arguments: '"last_week"}' } }, { index: 1, id: "call_b", function: { name: "get_releases", arguments: "{}" } }] }, "tool_calls"),
+      ),
+    ]);
+    const { deltas, res } = await drain(zenmux.stream(request()));
+    assert.deepEqual(deltas, []);
+    assert.deepEqual(res.message.tool_calls, [
+      { id: "call_a", type: "function", function: { name: "query_metrics", arguments: '{"preset":"last_week"}' } },
+      { id: "call_b", type: "function", function: { name: "get_releases", arguments: "{}" } },
+    ]);
   });
 
-  it("waits as long as Gemini asks, then retries", async () => {
-    const { gemini, calls, waits } = client([json(429, retryInfo("2s")), ok()]);
-    const { res } = await drain(gemini.stream(request));
-    assert.equal(res.content.parts[1]?.text, "lo");
+  it("forbids tools on the last step and leaves temperature to models that fix it", async () => {
+    const { zenmux, calls } = client([ok()]);
+    await drain(zenmux.stream(request({ model: "openai/gpt-6.1-sol", allowTools: false })));
+    const body = sent(calls[0]!);
+    assert.equal(body.tool_choice, "none");
+    assert.equal("temperature" in body, false);
+  });
+
+  it("waits as long as the provider asks, then retries", async () => {
+    const { zenmux, calls, waits } = client([json(429, { error: { message: "slow down" } }, { "retry-after": "2" }), ok()]);
+    const { res } = await drain(zenmux.stream(request()));
+    assert.equal(res.message.content, "Hello");
     assert.deepEqual(waits, [2000]);
     assert.equal(calls.length, 2);
-    assert.doesNotMatch(calls[0]!.url, /test-key/);
-    assert.equal((calls[0]!.init.headers as Record<string, string>)["x-goog-api-key"], "test-key");
   });
 
   it("reports long waits instead of hanging", async () => {
-    const { gemini, calls } = client([json(429, retryInfo("40s"))]);
-    await assert.rejects(drain(gemini.stream(request)), { code: "RATE_LIMITED", retryAfterSeconds: 40 });
+    const { zenmux, calls } = client([json(429, {}, { "retry-after": "40" })]);
+    await assert.rejects(drain(zenmux.stream(request())), { code: "RATE_LIMITED", retryAfterSeconds: 40 });
     assert.equal(calls.length, 1);
   });
 
-  it("tells a used-up daily quota apart", async () => {
-    const { gemini } = client([json(429, retryInfo("3600s", "GenerateRequestsPerDayPerProjectPerModel-FreeTier"))]);
-    await assert.rejects(drain(gemini.stream(request)), { code: "QUOTA_EXHAUSTED" });
+  it("tells an empty balance apart", async () => {
+    const { zenmux } = client([json(402, { error: { message: "Insufficient balance" } })]);
+    await assert.rejects(drain(zenmux.stream(request())), { code: "QUOTA_EXHAUSTED" });
   });
 
   it("gives up on server errors after its attempts", async () => {
-    const { gemini, calls } = client([json(503, {}), json(503, {}), json(503, {})]);
-    await assert.rejects(drain(gemini.stream(request)), { code: "MODEL_UNAVAILABLE" });
+    const { zenmux, calls } = client([json(503, {}), json(503, {}), json(503, {})]);
+    await assert.rejects(drain(zenmux.stream(request())), { code: "MODEL_UNAVAILABLE" });
     assert.equal(calls.length, 3);
   });
 
+  it("reports errors sent inside the stream", async () => {
+    const { zenmux } = client([sse(delta({ content: "Hi" }), { error: { code: 503, message: "upstream gone" } })]);
+    await assert.rejects(drain(zenmux.stream(request())), { code: "MODEL_UNAVAILABLE", detail: "upstream gone" });
+  });
+
   it("keeps the provider's error message out of the user's", async () => {
-    const { gemini } = client([json(400, { error: { code: 400, message: "API key not valid" } })]);
-    await assert.rejects(drain(gemini.stream(request)), (err: ModelError) => {
+    const { zenmux } = client([json(401, { error: { message: "Invalid API key" } })]);
+    await assert.rejects(drain(zenmux.stream(request())), (err: ModelError) => {
       assert.equal(err.code, "MODEL_ERROR");
-      assert.doesNotMatch(err.message, /API key not valid/);
-      assert.equal(err.detail, "API key not valid");
+      assert.doesNotMatch(err.message, /Invalid API key/);
+      assert.equal(err.detail, "Invalid API key");
       return true;
     });
   });

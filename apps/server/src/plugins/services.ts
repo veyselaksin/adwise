@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import fp from "fastify-plugin";
-import { GeminiClient } from "../clients/gemini.client.js";
+import { ZenMuxClient } from "../clients/zenmux.client.js";
 import { BudgetsRepository } from "../database/repositories/budgets.repository.js";
 import { EntitiesRepository } from "../database/repositories/entities.repository.js";
 import { MetricsRepository } from "../database/repositories/metrics.repository.js";
@@ -21,12 +21,12 @@ export type Services = {
   budgets: BudgetsService;
   releases: ReleasesService;
   rules: RulesService;
-  /** null when GEMINI_API_KEY isn't set. */
+  /** null when ZENMUX_API_KEY isn't set. */
   agent: AgentService | null;
 };
 
 export type ServicesOptions = {
-  /** Replaces Gemini, e.g. with a scripted model in tests. */
+  /** Replaces ZenMux, e.g. with a scripted model in tests. */
   model?: ModelClient;
 };
 
@@ -49,9 +49,8 @@ export default fp<ServicesOptions>(
     const entities = new EntitiesService(new EntitiesRepository(app.db));
     const budgets = new BudgetsService(new BudgetsRepository(app.db), metrics);
 
-    const model =
-      opts.model ?? (config.GEMINI_API_KEY ? new GeminiClient({ apiKey: config.GEMINI_API_KEY, model: config.GEMINI_MODEL }) : null);
-    if (!model) app.log.warn("GEMINI_API_KEY is not set; the agent is disabled");
+    const model = opts.model ?? (config.ZENMUX_API_KEY ? new ZenMuxClient({ apiKey: config.ZENMUX_API_KEY }) : null);
+    if (!model) app.log.warn("ZENMUX_API_KEY is not set; the agent is disabled");
 
     app.decorate("services", {
       auth: new AuthService({ user: config.APP_USER, password: config.APP_PASSWORD }, async (payload, signOpts) =>

@@ -27,7 +27,7 @@ export const testEnv = (overrides: Record<string, string> = {}) =>
     APP_PASSWORD: "app-password",
     DB_PATH,
     CASE_DIR,
-    GEMINI_API_KEY: "",
+    ZENMUX_API_KEY: "",
     // A fresh rules file per app, so tests never share or keep rules.
     RULES_PATH: join(tmpdir(), `adwise-rules-${randomUUID()}.json`),
     ...overrides,
