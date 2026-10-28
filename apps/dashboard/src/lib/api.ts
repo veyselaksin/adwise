@@ -2,7 +2,17 @@ import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE } from "./session";
-import type { AgentModels, BudgetPacing, Catalog, ChatMessage, Entities, MetricsQuery, MetricsResult, Rule } from "./types";
+import type {
+  AgentModels,
+  BudgetPacing,
+  Catalog,
+  ChatMessage,
+  Entities,
+  InvestigationRequest,
+  MetricsQuery,
+  MetricsResult,
+  Rule,
+} from "./types";
 
 // Server-side only: the API URL and the session token never reach the browser.
 const API_URL = process.env.API_URL ?? "http://localhost:4000";
@@ -98,19 +108,25 @@ export const getAgentModels = () => authed<AgentModels>("/agent/models");
  * a stream (NDJSON) for the browser to read step by step; errors keep the envelope.
  * `null` when there is no session.
  */
-export async function askAgent(
-  messages: ChatMessage[],
-  model: string | undefined,
-  signal: AbortSignal,
-): Promise<Response | null> {
+export const askAgent = (messages: ChatMessage[], model: string | undefined, signal: AbortSignal) =>
+  streamFrom("/agent/chat", { messages, ...(model && { model }) }, signal);
+
+/**
+ * Starts an investigation of one campaign's period against the one before it.
+ * Like `askAgent`, a successful response is an NDJSON stream; `null` without a session.
+ */
+export const runInvestigation = (request: InvestigationRequest, signal: AbortSignal) =>
+  streamFrom("/investigations", request, signal);
+
+async function streamFrom(path: string, body: unknown, signal: AbortSignal): Promise<Response | null> {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) return null;
   try {
-    return await fetch(`${API_URL}/agent/chat`, {
+    return await fetch(`${API_URL}${path}`, {
       method: "POST",
       cache: "no-store",
       headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
-      body: JSON.stringify({ messages, ...(model && { model }) }),
+      body: JSON.stringify(body),
       signal,
     });
   } catch (err) {

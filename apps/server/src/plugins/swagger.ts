@@ -51,6 +51,11 @@ export default fp(
             name: "agent",
             description: "The AI agent: answers questions from the same services, streaming each step.",
           },
+          {
+            name: "investigations",
+            description:
+              "Why a campaign's performance changed: verified period-over-period figures, interpreted by the agent's model under guardrails.",
+          },
         ],
         components: {
           securitySchemes: {

@@ -8,6 +8,7 @@ import { AgentService } from "../services/agent.service.js";
 import { AuthService } from "../services/auth.service.js";
 import { BudgetsService } from "../services/budgets.service.js";
 import { EntitiesService } from "../services/entities.service.js";
+import { InvestigationService } from "../services/investigation.service.js";
 import { KnowledgeService } from "../services/knowledge.service.js";
 import { McpService } from "../services/mcp.service.js";
 import { MetricsService } from "../services/metrics.service.js";
@@ -24,6 +25,8 @@ export type Services = {
   rules: RulesService;
   /** null when ZENMUX_API_KEY isn't set. */
   agent: AgentService | null;
+  /** Always on; without ZENMUX_API_KEY its reports have the facts but no interpretation. */
+  investigation: InvestigationService;
   /** The agent's tools for outside assistants; served only when MCP_SECRET is set. */
   mcp: McpService;
 };
@@ -65,6 +68,7 @@ export default fp<ServicesOptions>(
       releases,
       rules,
       agent: model && new AgentService(model, { metrics, entities, budgets, releases }, knowledge, rules, app.log),
+      investigation: new InvestigationService({ metrics, entities, releases, knowledge, rules, model, log: app.log }),
       mcp: new McpService({ metrics, entities, budgets, releases }, knowledge, rules),
     });
   },

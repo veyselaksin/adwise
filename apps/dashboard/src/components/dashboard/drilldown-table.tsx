@@ -1,14 +1,15 @@
 "use client";
 
-import { ArrowDownIcon, ArrowUpIcon, ChevronRightIcon } from "lucide-react";
-import { Fragment, useState } from "react";
+import { ArrowDownIcon, ArrowUpIcon, ChevronRightIcon, ScanSearchIcon } from "lucide-react";
+import Link from "next/link";
+import { Fragment, type ReactNode, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatMetric, formatPct, formatRange, formatUsd } from "@/lib/format";
 import type { MetricDefs } from "@/lib/metrics";
-import type { BudgetPacing, MetricKey, MetricRow, PacingFields } from "@/lib/types";
+import type { BudgetPacing, DateRange, MetricKey, MetricRow, PacingFields } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ExportMenu } from "./export-menu";
 
@@ -35,9 +36,11 @@ type Props = {
   defs: MetricDefs;
   /** The overview's query string, for the export links. */
   search: string;
+  /** The overview's period, which an investigation starts from. */
+  range: DateRange;
 };
 
-export function DrilldownTable({ campaigns, adsets, ads, pacing, defs, search }: Props) {
+export function DrilldownTable({ campaigns, adsets, ads, pacing, defs, search, range }: Props) {
   const campaignPace = new Map(pacing.campaigns.map((p) => [p.campaign_id, p]));
   const adsetPace = new Map(pacing.adsets.map((p) => [p.adset_id, p]));
   const paceHelp = `Average daily spend over the last ${pacing.days} days (${formatRange(pacing.range)}) ÷ the current daily budget. Flagged outside ${formatPct(pacing.band.under)}–${formatPct(pacing.band.over)}. Ignores the date filter: only today's budget is known, and budgets have changed over time.`;
@@ -127,6 +130,7 @@ export function DrilldownTable({ campaigns, adsets, ads, pacing, defs, search }:
                     pace={campaignPace.get(c.campaign_id!)}
                     name={c.campaign_name!}
                     meta={`${c.channel === "tiktok" ? "TikTok" : "Meta"} · ${c.country}`}
+                    action={<InvestigateLink campaignId={c.campaign_id!} name={c.campaign_name!} range={range} search={search} />}
                   />
                   {campaignOpen &&
                     sorted(adsets.filter((a) => a.campaign_id === c.campaign_id)).map((s) => {
@@ -178,9 +182,11 @@ type RowProps = {
   pace?: PacingFields;
   expanded?: boolean;
   onToggle?: () => void;
+  /** A button after the name (campaigns: Investigate). */
+  action?: ReactNode;
 };
 
-function Row({ row, defs, level, name, meta, paused, pace, expanded, onToggle }: RowProps) {
+function Row({ row, defs, level, name, meta, paused, pace, expanded, onToggle, action }: RowProps) {
   return (
     <TableRow
       className={cn(level === 0 && "font-medium", level === 2 && "text-muted-foreground", onToggle && "cursor-pointer")}
@@ -211,6 +217,7 @@ function Row({ row, defs, level, name, meta, paused, pace, expanded, onToggle }:
               Paused
             </Badge>
           )}
+          {action}
         </div>
       </TableCell>
       <TableCell className="text-right tabular-nums">{pace && <PaceCell pace={pace} />}</TableCell>
@@ -257,5 +264,21 @@ function PaceCell({ pace }: { pace: PacingFields }) {
       </span>
       <span className="text-xs text-muted-foreground">of {formatUsd(pace.daily_budget_usd)}</span>
     </span>
+  );
+}
+
+/** Opens the investigation for this campaign and the overview's period, and starts it. */
+function InvestigateLink({ campaignId, name, range, search }: { campaignId: string; name: string; range: DateRange; search: string }) {
+  const params = new URLSearchParams({ campaign: campaignId, from: range.from, to: range.to, run: "1" });
+  if (search) params.set("back", search.replace(/^\?/, ""));
+  return (
+    <Link
+      href={`/investigate?${params}`}
+      onClick={(e) => e.stopPropagation()}
+      title={`Investigate why ${name} changed in this period`}
+      className={cn(buttonVariants({ variant: "ghost", size: "xs" }), "ml-auto font-normal text-muted-foreground")}
+    >
+      <ScanSearchIcon /> Investigate
+    </Link>
   );
 }

@@ -448,10 +448,18 @@ describe("ZenMux client", () => {
 
   it("forbids tools on the last step and leaves temperature to models that fix it", async () => {
     const { zenmux, calls } = client([ok()]);
-    await drain(zenmux.stream(request({ model: "openai/gpt-6.1-sol", allowTools: false })));
+    await drain(zenmux.stream(request({ model: "openai/gpt-6.1-sol", allowTools: false, tools: TOOL_DECLARATIONS })));
     const body = sent(calls[0]!);
     assert.equal(body.tool_choice, "none");
     assert.equal("temperature" in body, false);
+  });
+
+  it("sends neither tools nor tool_choice for a request without tools", async () => {
+    const { zenmux, calls } = client([ok()]);
+    await drain(zenmux.stream(request({ allowTools: false })));
+    const body = sent(calls[0]!);
+    assert.equal("tools" in body, false);
+    assert.equal("tool_choice" in body, false);
   });
 
   it("waits as long as the provider asks, then retries", async () => {

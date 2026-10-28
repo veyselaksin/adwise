@@ -12,6 +12,13 @@ export class EntitiesRepository {
     });
   }
 
+  async campaign(id: string): Promise<Campaign | null> {
+    return this.db.campaign.findUnique({
+      where: { id },
+      select: { id: true, name: true, channel: true, country: true, status: true },
+    });
+  }
+
   async adsets(): Promise<AdSet[]> {
     const rows = await this.db.adSet.findMany({ orderBy: [{ campaignId: "asc" }, { name: "asc" }] });
     return rows.map((s) => ({

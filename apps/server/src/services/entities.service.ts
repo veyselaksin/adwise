@@ -1,5 +1,5 @@
 import type { EntitiesRepository } from "../database/repositories/entities.repository.js";
-import type { Entities } from "../types/entities.type.js";
+import type { Campaign, Entities } from "../types/entities.type.js";
 
 export class EntitiesService {
   constructor(private readonly repo: EntitiesRepository) {}
@@ -8,5 +8,10 @@ export class EntitiesService {
   async list(): Promise<Entities> {
     const [campaigns, adsets, ads] = await Promise.all([this.repo.campaigns(), this.repo.adsets(), this.repo.ads()]);
     return { campaigns, adsets, ads };
+  }
+
+  /** One campaign by id; null when there is none. */
+  campaign(id: string): Promise<Campaign | null> {
+    return this.repo.campaign(id);
   }
 }

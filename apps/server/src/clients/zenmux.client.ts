@@ -107,9 +107,9 @@ export class ZenMuxClient implements ModelClient {
     const body = JSON.stringify({
       model: req.model,
       messages: [{ role: "system", content: req.system }, ...req.messages],
-      tools: req.tools,
       // Tools stay declared on the last step so earlier tool calls in the history remain valid.
-      tool_choice: req.allowTools ? "auto" : "none",
+      // A request without tools (the investigation's interpreter) sends neither field.
+      ...(req.tools.length > 0 && { tools: req.tools, tool_choice: req.allowTools ? "auto" : "none" }),
       stream: true,
       stream_options: { include_usage: true },
       ...(settings && "temperature" in settings && { temperature: settings.temperature }),

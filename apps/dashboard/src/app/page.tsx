@@ -56,7 +56,7 @@ async function Dashboard({ searchParams }: Pick<PageProps<"/">, "searchParams">)
       <KpiGrid tiles={data.tiles} previousRange={data.previousRange} />
       <TrendChart filters={filters} range={data.range} rows={data.series} defs={defs} />
       <CountryTable rows={data.countries.rows} range={data.countries.range} excluded={data.countries.excluded} />
-      <DrilldownTable {...data.drilldown} defs={defs} search={search} />
+      <DrilldownTable {...data.drilldown} defs={defs} search={search} range={data.range} />
     </>
   );
 }

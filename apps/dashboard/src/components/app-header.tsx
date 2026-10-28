@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 
 const PAGES = [
   { href: "/", label: "Overview" },
+  { href: "/investigate", label: "Investigate" },
   { href: "/rules", label: "Rules" },
 ] as const;
 
