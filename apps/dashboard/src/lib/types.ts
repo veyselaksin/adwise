@@ -142,3 +142,6 @@ export type AgentEvent =
   | { type: "answer"; text: string }
   | { type: "error"; code: string; message: string; retryAfterSeconds?: number }
   | { type: "done"; steps: number; usage: { inputTokens: number; outputTokens: number } };
+
+/** A rule the team added on the Rules page; enabled rules go to the agent with every question. */
+export type Rule = { id: string; text: string; enabled: boolean; createdAt: string; updatedAt: string };

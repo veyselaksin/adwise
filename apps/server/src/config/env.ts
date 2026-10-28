@@ -24,6 +24,8 @@ const EnvSchema = Type.Object({
   DB_PATH: Type.String({ minLength: 1 }),
   /** The case folder: glossary.md, team-notes.md and build-logs/ are read from here at boot. */
   CASE_DIR: Type.String({ minLength: 1 }),
+  /** Where the team rules added in the dashboard are saved (a JSON file the server writes). */
+  RULES_PATH: Type.String({ minLength: 1, default: "data/team-rules.json" }),
   /** Gemini API key for the agent. Empty disables the agent (its route answers 503 AGENT_DISABLED). */
   GEMINI_API_KEY: Type.String({ default: "" }),
   GEMINI_MODEL: Type.String({ minLength: 1, default: "gemini-3.5-flash" }),

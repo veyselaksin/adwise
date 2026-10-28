@@ -2,7 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE } from "./session";
-import type { BudgetPacing, Catalog, ChatMessage, Entities, MetricsQuery, MetricsResult } from "./types";
+import type { BudgetPacing, Catalog, ChatMessage, Entities, MetricsQuery, MetricsResult, Rule } from "./types";
 
 // Server-side only: the API URL and the session token never reach the browser.
 const API_URL = process.env.API_URL ?? "http://localhost:4000";
@@ -81,6 +81,15 @@ export const queryMetrics = (query: MetricsQuery) =>
 /** Last `days` full days' spend against each ad set's current budget; independent of the date filter. */
 export const getBudgetPacing = (days?: number) =>
   authed<BudgetPacing>(`/budgets/pacing${days ? `?days=${days}` : ""}`);
+
+export const getRules = () => authed<Rule[]>("/rules");
+
+export const createRule = (text: string) => authed<Rule>("/rules", { method: "POST", body: JSON.stringify({ text }) });
+
+export const updateRule = (id: string, changes: { text?: string; enabled?: boolean }) =>
+  authed<Rule>(`/rules/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(changes) });
+
+export const deleteRule = (id: string) => authed<Rule>(`/rules/${encodeURIComponent(id)}`, { method: "DELETE" });
 
 /**
  * Asks the agent. Returns the API's response as is, because a successful one is

@@ -1,8 +1,7 @@
-import { LogOutIcon } from "lucide-react";
 import { Suspense } from "react";
 import { AgentProvider } from "@/components/agent/agent-provider";
 import { AgentToggle } from "@/components/agent/agent-toggle";
-import { Brand } from "@/components/brand";
+import { AppHeader } from "@/components/app-header";
 import { CountryTable } from "@/components/dashboard/country-table";
 import { DrilldownTable } from "@/components/dashboard/drilldown-table";
 import { ExportMenu } from "@/components/dashboard/export-menu";
@@ -10,31 +9,17 @@ import { FilterBar } from "@/components/dashboard/filter-bar";
 import { KpiGrid } from "@/components/dashboard/kpi-grid";
 import { loadDashboard } from "@/components/dashboard/load-dashboard";
 import { TrendChart } from "@/components/dashboard/trend-chart";
-import { ThemeSwitcher } from "@/components/theme-switcher";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { filtersToSearch, parseFilters } from "@/lib/filters";
 import { formatDay } from "@/lib/format";
-import { signOut } from "./login/actions";
 
 export default function Home({ searchParams }: PageProps<"/">) {
   return (
     <AgentProvider>
-      <header className="sticky top-0 z-20 border-b bg-background/85 backdrop-blur">
-        <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
-          <Brand />
-          <div className="flex items-center gap-2">
-            <AgentToggle />
-            <ThemeSwitcher />
-            <form action={signOut}>
-              <Button variant="ghost" size="sm" type="submit">
-                <LogOutIcon /> Sign out
-              </Button>
-            </form>
-          </div>
-        </div>
-      </header>
+      <AppHeader active="/">
+        <AgentToggle />
+      </AppHeader>
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 px-4 py-5 sm:px-6">
         <Suspense fallback={<DashboardSkeleton />}>
           <Dashboard searchParams={searchParams} />

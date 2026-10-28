@@ -56,3 +56,6 @@ AGENTS.md
 CLAUDE.md
 CLAUDE.local.md
 .claude/settings.local.json
+
+# Team rules written by the server (RULES_PATH default)
+apps/server/data/

@@ -5,6 +5,7 @@ import budgetsRoutes from "./budgets.routes.js";
 import entitiesRoutes from "./entities.routes.js";
 import healthRoutes from "./health.routes.js";
 import metricsRoutes from "./metrics.routes.js";
+import rulesRoutes from "./rules.routes.js";
 
 /** Every route plugin. Each is encapsulated, so an auth hook in one doesn't leak into the others. */
 const routes: FastifyPluginAsyncTypebox = async (app) => {
@@ -14,6 +15,7 @@ const routes: FastifyPluginAsyncTypebox = async (app) => {
   await app.register(entitiesRoutes);
   await app.register(budgetsRoutes);
   await app.register(agentRoutes);
+  await app.register(rulesRoutes);
 };
 
 export default routes;

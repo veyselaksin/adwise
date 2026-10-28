@@ -11,6 +11,7 @@ import { EntitiesService } from "../services/entities.service.js";
 import { KnowledgeService } from "../services/knowledge.service.js";
 import { MetricsService } from "../services/metrics.service.js";
 import { ReleasesService } from "../services/releases.service.js";
+import { RulesService } from "../services/rules.service.js";
 import type { ModelClient } from "../types/agent.type.js";
 
 export type Services = {
@@ -19,6 +20,7 @@ export type Services = {
   entities: EntitiesService;
   budgets: BudgetsService;
   releases: ReleasesService;
+  rules: RulesService;
   /** null when GEMINI_API_KEY isn't set. */
   agent: AgentService | null;
 };
@@ -38,10 +40,11 @@ declare module "fastify" {
 export default fp<ServicesOptions>(
   async (app, opts) => {
     const { config } = app;
-    const [metrics, releases, knowledge] = await Promise.all([
+    const [metrics, releases, knowledge, rules] = await Promise.all([
       MetricsService.create(new MetricsRepository(app.db)),
       ReleasesService.load(join(config.CASE_DIR, "build-logs")),
       KnowledgeService.load(config.CASE_DIR),
+      RulesService.load(config.RULES_PATH),
     ]);
     const entities = new EntitiesService(new EntitiesRepository(app.db));
     const budgets = new BudgetsService(new BudgetsRepository(app.db), metrics);
@@ -58,7 +61,8 @@ export default fp<ServicesOptions>(
       entities,
       budgets,
       releases,
-      agent: model && new AgentService(model, { metrics, entities, budgets, releases }, knowledge, app.log),
+      rules,
+      agent: model && new AgentService(model, { metrics, entities, budgets, releases }, knowledge, rules, app.log),
     });
   },
   { name: "services", dependencies: ["config", "auth", "database"] },

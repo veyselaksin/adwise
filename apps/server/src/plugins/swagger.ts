@@ -44,6 +44,10 @@ export default fp(
             description: "Ad set spend against daily budgets over a recent window, read-only.",
           },
           {
+            name: "rules",
+            description: "Answering rules the team adds without a code change; enabled ones go to the agent on every question.",
+          },
+          {
             name: "agent",
             description: "The AI agent: answers questions from the same services, streaming each step.",
           },

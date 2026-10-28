@@ -1,4 +1,7 @@
+import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { loadEnv } from "../src/config/env.js";
 
 /** The case's SQLite file. `pnpm test` loads it from `.env`; it is never committed. */
@@ -25,5 +28,7 @@ export const testEnv = (overrides: Record<string, string> = {}) =>
     DB_PATH,
     CASE_DIR,
     GEMINI_API_KEY: "",
+    // A fresh rules file per app, so tests never share or keep rules.
+    RULES_PATH: join(tmpdir(), `adwise-rules-${randomUUID()}.json`),
     ...overrides,
   });

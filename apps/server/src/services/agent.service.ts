@@ -6,6 +6,7 @@ import type { AgentEvent, ChatMessage, ModelClient, ModelContent, ModelPart, Mod
 import { buildSystemPrompt } from "./agent.prompt.js";
 import { runTool, TOOL_DECLARATIONS, toolLabel, type ToolDeps } from "./agent.tools.js";
 import type { KnowledgeService } from "./knowledge.service.js";
+import type { RulesService } from "./rules.service.js";
 
 /**
  * Answers a question with a short tool loop: the model asks for data, the
@@ -14,16 +15,13 @@ import type { KnowledgeService } from "./knowledge.service.js";
  * the dashboard sends the conversation each time.
  */
 export class AgentService {
-  private readonly system: string;
-
   constructor(
     private readonly model: ModelClient,
     private readonly deps: ToolDeps,
-    knowledge: KnowledgeService,
+    private readonly knowledge: KnowledgeService,
+    private readonly rules: RulesService,
     private readonly log: Pick<FastifyBaseLogger, "warn" | "error">,
-  ) {
-    this.system = buildSystemPrompt(deps.metrics.catalog(), knowledge);
-  }
+  ) {}
 
   /** Throws before anything is streamed, so bad input still gets a normal 400. */
   validate(messages: ChatMessage[]): void {
@@ -37,6 +35,8 @@ export class AgentService {
 
   async *chat(messages: ChatMessage[], signal?: AbortSignal): AsyncGenerator<AgentEvent> {
     const contents = toContents(messages);
+    // Built per question, so a rule added on the Rules page applies from the next question.
+    const system = buildSystemPrompt(this.deps.metrics.catalog(), this.knowledge, this.rules.active());
     const usage: ModelUsage = { inputTokens: 0, outputTokens: 0 };
     let steps = 0;
 
@@ -45,7 +45,7 @@ export class AgentService {
         steps++;
         // The last step may not call tools, so every question ends in an answer.
         const stream = this.model.stream({
-          system: this.system,
+          system,
           contents,
           tools: TOOL_DECLARATIONS,
           allowTools: steps < AGENT_MAX_STEPS,

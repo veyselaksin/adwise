@@ -173,6 +173,18 @@ describe("POST /agent/chat", () => {
     assert.deepEqual(result.final_through, { cac: "2026-10-11" });
   });
 
+  it("hands ratios over as percentages, so the model quotes instead of re-rounding", async () => {
+    const model = new ScriptedModel((step) =>
+      step === 1
+        ? call("query_metrics", { from: "2026-10-01", to: "2026-10-10", channels: ["tiktok"], metrics: ["trial_to_sub"] })
+        : say("ok"),
+    );
+    await ask(await appWith(model), "TikTok trial to sub in October?");
+    const result = model.requests[1]!.contents.at(-1)!.parts[0]!.functionResponse!.response as { totals: { trial_to_sub: number } };
+    // Reference answer 3: 1,549 of 3,977 trials is 38.949…%, which reads 38.9%, not 39.0%.
+    assert.equal(result.totals.trial_to_sub, 38.9);
+  });
+
   it("hands bad tool arguments back to the model to fix", async () => {
     const model = new ScriptedModel((step) =>
       step === 1 ? call("query_metrics", { group_by: ["planet"], preset: "last_week" }) : step === 2 ? call("query_metrics", { metrics: ["spend"] }) : say("fixed"),

@@ -77,7 +77,7 @@ const queryMetrics = tool({
     "Derived metrics are ratios of sums, so always read them from here instead of averaging rows.",
     "`totals` is the blended number over every row (also when `limit` cuts the rows).",
     "`not_final` lists metrics that include install days too young to be final; `final_through` says the last final day for those, so you can re-query up to it.",
-    "Ratios (trial_to_sub, d7_roas, ctr) are fractions: 0.401 means 40.1%.",
+    "Ratios (trial_to_sub, d7_roas, ctr) are percentages already rounded to one decimal: 40.1 means 40.1%. Quote them as they are.",
   ].join(" "),
   params: QueryMetricsParams,
   label: (a) => {
@@ -133,7 +133,10 @@ const queryMetrics = tool({
 
 const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
-/** Drops empty dimensions and unrequested metrics, and rounds the way the team reads numbers. */
+/**
+ * Drops empty dimensions and unrequested metrics, and rounds the way the team
+ * reads numbers (ratios become percentages), so the model quotes instead of re-rounding.
+ */
 function compactRow(row: MetricRow, keys: MetricKeyType[]) {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(row) as [keyof DimensionFields, unknown][]) {
@@ -148,7 +151,7 @@ function compactRow(row: MetricRow, keys: MetricKeyType[]) {
 function round(key: MetricKeyType, value: number | null): number | null {
   if (value === null) return null;
   const { unit } = METRICS[key];
-  return unit === "usd" ? roundCents(value) : unit === "ratio" ? Math.round(value * 1e4) / 1e4 : value;
+  return unit === "usd" ? roundCents(value) : unit === "ratio" ? Math.round(value * 1000) / 10 : value;
 }
 
 const countIds = (ids: string[] | undefined, noun: string) =>

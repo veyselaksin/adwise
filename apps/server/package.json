@@ -13,6 +13,7 @@
     "lint": "eslint .",
     "typecheck": "prisma generate && tsc --noEmit",
     "test": "prisma generate && tsx --env-file-if-exists=.env --test test/**/*.test.ts",
+    "eval": "tsx --env-file-if-exists=.env scripts/eval.ts",
     "generate": "prisma generate"
   },
   "dependencies": {
