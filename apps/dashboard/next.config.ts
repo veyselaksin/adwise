@@ -1,9 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
+  images: {
+    // Sign-in page photos.
+    remotePatterns: [new URL("https://images.unsplash.com/photo-*")],
+    qualities: [75, 90],
+  },
   turbopack: {
     rules: {
       "*.css": {

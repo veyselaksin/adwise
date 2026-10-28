@@ -12,7 +12,7 @@
     "start": "node --env-file-if-exists=.env dist/server.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test test/**/*.test.ts"
+    "test": "tsx --env-file-if-exists=.env --test test/**/*.test.ts"
   },
   "dependencies": {
     "@fastify/cookie": "11.1.5",

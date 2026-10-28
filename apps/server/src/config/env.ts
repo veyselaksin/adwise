@@ -18,6 +18,9 @@ const EnvSchema = Type.Object({
   DOCS_ENABLED: Type.Boolean({ default: true }),
   DOCS_USER: Type.String({ minLength: 1 }),
   DOCS_PASSWORD: Type.String({ minLength: 8 }),
+  /** Dashboard sign-in. One shared team account for now (demo credentials). */
+  APP_USER: Type.String({ minLength: 1 }),
+  APP_PASSWORD: Type.String({ minLength: 8 }),
   DB_PATH: Type.String({ minLength: 1 }),
 });
 

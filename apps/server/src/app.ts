@@ -3,10 +3,13 @@ import Fastify, { type FastifyServerOptions } from "fastify";
 import fp from "fastify-plugin";
 import type { Env } from "./config/env.js";
 import auth from "./plugins/auth.js";
+import data from "./plugins/data.js";
 import errorHandler from "./plugins/error-handler.js";
 import security from "./plugins/security.js";
 import swagger from "./plugins/swagger.js";
+import authRoutes from "./routes/auth.js";
 import health from "./routes/health.js";
+import metrics from "./routes/metrics.js";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -37,8 +40,11 @@ export async function buildApp(env: Env, opts: FastifyServerOptions = {}) {
   await app.register(security);
   await app.register(auth);
   await app.register(swagger);
+  await app.register(data);
 
   await app.register(health);
+  await app.register(authRoutes);
+  await app.register(metrics);
 
   return app;
 }

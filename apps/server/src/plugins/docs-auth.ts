@@ -1,9 +1,10 @@
-import { randomBytes, timingSafeEqual } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import cookie from "@fastify/cookie";
 import formbody from "@fastify/formbody";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 import Type from "typebox";
+import { safeEqual } from "../lib/crypto.js";
 import { failure } from "../lib/response.js";
 import { docsLoginCsp, renderDocsLogin } from "../views/docs-login.js";
 
@@ -19,12 +20,6 @@ const LOGIN_PATH = `${DOCS_PREFIX}/login`;
 const LOGOUT_PATH = `${DOCS_PREFIX}/logout`;
 const COOKIE_NAME = "docs_session";
 const SESSION_TTL_SECONDS = 8 * 60 * 60;
-
-function safeEqual(a: string, b: string): boolean {
-  const left = Buffer.from(a);
-  const right = Buffer.from(b);
-  return left.length === right.length && timingSafeEqual(left, right);
-}
 
 const LoginBody = Type.Object({
   username: Type.String({ maxLength: 256 }),

@@ -49,7 +49,7 @@ export function renderDocsLogin({ action, nonce, error, username = "" }: LoginPa
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   <meta name="color-scheme" content="light dark">
-  <title>Sign in · Ad Performance API</title>
+  <title>Sign in · ADWISE API</title>
   <script nonce="${nonce}">
     // Apply the saved theme before first paint to avoid a flash.
     try {
@@ -159,7 +159,7 @@ export function renderDocsLogin({ action, nonce, error, username = "" }: LoginPa
       <div class="topbar">
         <div class="brand">
           <span class="brand-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18V10M10 18V6M16 18v-5M22 18H2"/></svg></span>
-          Ad Performance
+          ADWISE
         </div>
         <div class="theme" role="group" aria-label="Color theme">
           ${themeButton("system", "System")}${themeButton("light", "Light")}${themeButton("dark", "Dark")}

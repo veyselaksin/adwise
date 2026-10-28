@@ -2,16 +2,9 @@ import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
 import { buildApp } from "../src/app.js";
 import { loadEnv } from "../src/config/env.js";
+import { testEnv } from "./helpers.js";
 
-const env = loadEnv({
-  NODE_ENV: "test",
-  LOG_LEVEL: "silent",
-  JWT_SECRET: "test-secret-that-is-at-least-32-characters",
-  COOKIE_SECRET: "test-cookie-secret-at-least-32-characters",
-  DOCS_USER: "docs",
-  DOCS_PASSWORD: "docs-password",
-  DB_PATH: "unused-in-these-tests.db",
-});
+const env = testEnv();
 
 const basic = (user: string, pass: string) =>
   `Basic ${Buffer.from(`${user}:${pass}`).toString("base64")}`;
@@ -123,7 +116,7 @@ describe("server", () => {
 
       const spec = await app.inject({ method: "GET", url: "/docs/json", cookies });
       assert.equal(spec.statusCode, 200);
-      assert.equal(spec.json().info.title, "Ad Performance API");
+      assert.equal(spec.json().info.title, "ADWISE API");
     });
 
     it("rejects a tampered session cookie", async () => {

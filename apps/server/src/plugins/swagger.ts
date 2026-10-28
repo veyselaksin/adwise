@@ -10,7 +10,7 @@ const description = `
 REST API behind the Livensa ad performance dashboard and its AI agent.
 
 **Authentication**
-- Data endpoints require a JWT: click **Authorize** and paste the token as \`Bearer <token>\`.
+- Data endpoints require a JWT: get one from \`POST /auth/login\`, then click **Authorize** and paste the token.
 - These docs require a sign-in at \`/docs/login\` (\`DOCS_USER\` / \`DOCS_PASSWORD\`); sign out at \`/docs/logout\`.
 - Scripts can fetch the spec with HTTP Basic auth, e.g. \`curl -u user:pass /docs/json\`.
 
@@ -29,9 +29,17 @@ export default fp(
     await app.register(swagger, {
       openapi: {
         openapi: "3.1.0",
-        info: { title: "Ad Performance API", version, description },
+        info: { title: "ADWISE API", version, description },
         servers: [{ url: "/", description: "Current host" }],
-        tags: [{ name: "health", description: "Liveness and version checks" }],
+        tags: [
+          { name: "health", description: "Liveness and version checks" },
+          { name: "auth", description: "Sign in to get the JWT the data endpoints require" },
+          {
+            name: "metrics",
+            description:
+              "Ad performance from the warehouse, read-only. The dashboard and the agent use these same definitions.",
+          },
+        ],
         components: {
           securitySchemes: {
             bearerAuth: {
@@ -55,7 +63,7 @@ export default fp(
       uiHooks: { onRequest: app.docsGuard },
       staticCSP: true,
       theme: {
-        title: "Ad Performance API docs",
+        title: "ADWISE API docs",
         css: [{ filename: "overrides.css", content: docsThemeCss }],
       },
     });

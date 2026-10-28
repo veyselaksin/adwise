@@ -1,0 +1,214 @@
+"use client";
+
+import { ArrowDownIcon, ArrowUpIcon, ChevronRightIcon } from "lucide-react";
+import { Fragment, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardAction, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatMetric } from "@/lib/format";
+import type { MetricDefs } from "@/lib/metrics";
+import type { MetricKey, MetricRow } from "@/lib/types";
+import { cn } from "@/lib/utils";
+
+const COLUMNS: MetricKey[] = [
+  "spend",
+  "installs",
+  "trials",
+  "subscriptions",
+  "cpi",
+  "cost_per_trial",
+  "cac",
+  "trial_to_sub",
+  "d7_roas",
+  "ctr",
+];
+
+type Sort = { key: MetricKey; dir: "asc" | "desc" };
+
+type Props = {
+  campaigns: MetricRow[];
+  adsets: MetricRow[];
+  ads: MetricRow[];
+  defs: MetricDefs;
+};
+
+export function DrilldownTable({ campaigns, adsets, ads, defs }: Props) {
+  const [sort, setSort] = useState<Sort>({ key: "spend", dir: "desc" });
+  const [open, setOpen] = useState<Set<string>>(new Set());
+
+  const sorted = (rows: MetricRow[]) =>
+    [...rows].sort((a, b) => {
+      const av = a[sort.key];
+      const bv = b[sort.key];
+      if (av === null || bv === null) return av === bv ? 0 : av === null ? 1 : -1;
+      return sort.dir === "asc" ? av - bv : bv - av;
+    });
+  const toggle = (id: string) =>
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const allIds = [...campaigns.map((c) => c.campaign_id!), ...adsets.map((a) => a.adset_id!)];
+  const allOpen = allIds.every((id) => open.has(id));
+
+  const onSort = (key: MetricKey) =>
+    setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: defs[key].better === "lower" ? "asc" : "desc" }));
+
+  return (
+    <Card className="gap-3">
+      <CardHeader>
+        <CardTitle>Campaigns, ad sets and ads</CardTitle>
+        <CardDescription>
+          Click a row to drill down; click a column to sort. Values marked{" "}
+          <span className="text-provisional underline decoration-dotted underline-offset-4">like this</span> include days
+          that aren&apos;t final yet.
+        </CardDescription>
+        <CardAction>
+          <Button variant="outline" size="sm" onClick={() => setOpen(allOpen ? new Set() : new Set(allIds))}>
+            {allOpen ? "Collapse all" : "Expand all"}
+          </Button>
+        </CardAction>
+      </CardHeader>
+      <div className="px-4">
+        <Table className="text-[13px]">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="min-w-64">Name</TableHead>
+              {COLUMNS.map((key) => (
+                <TableHead key={key} className="text-right" aria-sort={sort.key === key ? (sort.dir === "asc" ? "ascending" : "descending") : undefined}>
+                  <button
+                    type="button"
+                    onClick={() => onSort(key)}
+                    title={defs[key].formula ? `${defs[key].label} = ${defs[key].formula}` : undefined}
+                    className="inline-flex items-center gap-1 hover:text-foreground"
+                  >
+                    {defs[key].label}
+                    {sort.key === key &&
+                      (sort.dir === "asc" ? <ArrowUpIcon className="size-3" /> : <ArrowDownIcon className="size-3" />)}
+                  </button>
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {campaigns.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={COLUMNS.length + 1} className="py-8 text-center text-muted-foreground">
+                  No ad activity for these filters.
+                </TableCell>
+              </TableRow>
+            )}
+            {sorted(campaigns).map((c) => {
+              const campaignOpen = open.has(c.campaign_id!);
+              return (
+                <Fragment key={c.campaign_id}>
+                  <Row
+                    row={c}
+                    defs={defs}
+                    level={0}
+                    expanded={campaignOpen}
+                    onToggle={() => toggle(c.campaign_id!)}
+                    name={c.campaign_name!}
+                    meta={`${c.channel === "tiktok" ? "TikTok" : "Meta"} · ${c.country}`}
+                  />
+                  {campaignOpen &&
+                    sorted(adsets.filter((a) => a.campaign_id === c.campaign_id)).map((s) => {
+                      const adsetOpen = open.has(s.adset_id!);
+                      return (
+                        <Fragment key={s.adset_id}>
+                          <Row
+                            row={s}
+                            defs={defs}
+                            level={1}
+                            expanded={adsetOpen}
+                            onToggle={() => toggle(s.adset_id!)}
+                            name={s.adset_name!}
+                          />
+                          {adsetOpen &&
+                            sorted(ads.filter((a) => a.adset_id === s.adset_id)).map((a) => (
+                              <Row
+                                key={a.ad_id}
+                                row={a}
+                                defs={defs}
+                                level={2}
+                                name={a.ad_name!}
+                                meta={a.creative_type}
+                                paused={a.ad_status === "paused"}
+                              />
+                            ))}
+                        </Fragment>
+                      );
+                    })}
+                </Fragment>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    </Card>
+  );
+}
+
+type RowProps = {
+  row: MetricRow;
+  defs: MetricDefs;
+  level: 0 | 1 | 2;
+  name: string;
+  meta?: string;
+  paused?: boolean;
+  expanded?: boolean;
+  onToggle?: () => void;
+};
+
+function Row({ row, defs, level, name, meta, paused, expanded, onToggle }: RowProps) {
+  return (
+    <TableRow
+      className={cn(level === 0 && "font-medium", level === 2 && "text-muted-foreground", onToggle && "cursor-pointer")}
+      onClick={onToggle}
+    >
+      <TableCell>
+        <div className="flex items-center gap-1.5" style={{ paddingLeft: level * 20 }}>
+          {onToggle ? (
+            <button
+              type="button"
+              aria-expanded={expanded}
+              aria-label={`${expanded ? "Collapse" : "Expand"} ${name}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggle();
+              }}
+              className="grid size-5 place-items-center rounded hover:bg-muted"
+            >
+              <ChevronRightIcon className={cn("size-3.5 transition-transform", expanded && "rotate-90")} />
+            </button>
+          ) : (
+            <span className="size-5" />
+          )}
+          <span className={cn(level === 2 && "text-foreground")}>{name}</span>
+          {meta && <span className="text-xs text-muted-foreground">{meta}</span>}
+          {paused && (
+            <Badge variant="outline" className="h-4.5 px-1.5 text-[10px]">
+              Paused
+            </Badge>
+          )}
+        </div>
+      </TableCell>
+      {COLUMNS.map((key) => {
+        const notFinal = row.provisional.includes(key);
+        return (
+          <TableCell key={key} className="text-right tabular-nums">
+            <span
+              className={cn(notFinal && "text-provisional underline decoration-dotted underline-offset-4")}
+              title={notFinal ? `Not final: includes install days less than ${defs[key].finalAfterDays} days old` : undefined}
+            >
+              {formatMetric(defs[key], row[key])}
+            </span>
+          </TableCell>
+        );
+      })}
+    </TableRow>
+  );
+}
