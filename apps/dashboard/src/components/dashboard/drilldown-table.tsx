@@ -6,10 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { formatMetric } from "@/lib/format";
+import { formatMetric, formatPct, formatRange, formatUsd } from "@/lib/format";
 import type { MetricDefs } from "@/lib/metrics";
-import type { MetricKey, MetricRow } from "@/lib/types";
+import type { BudgetPacing, MetricKey, MetricRow, PacingFields } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { ExportMenu } from "./export-menu";
 
 const COLUMNS: MetricKey[] = [
   "spend",
@@ -30,10 +31,16 @@ type Props = {
   campaigns: MetricRow[];
   adsets: MetricRow[];
   ads: MetricRow[];
+  pacing: BudgetPacing;
   defs: MetricDefs;
+  /** The overview's query string, for the export links. */
+  search: string;
 };
 
-export function DrilldownTable({ campaigns, adsets, ads, defs }: Props) {
+export function DrilldownTable({ campaigns, adsets, ads, pacing, defs, search }: Props) {
+  const campaignPace = new Map(pacing.campaigns.map((p) => [p.campaign_id, p]));
+  const adsetPace = new Map(pacing.adsets.map((p) => [p.adset_id, p]));
+  const paceHelp = `Average daily spend over the last ${pacing.days} days (${formatRange(pacing.range)}) ÷ the current daily budget. Flagged outside ${formatPct(pacing.band.under)}–${formatPct(pacing.band.over)}. Ignores the date filter: only today's budget is known, and budgets have changed over time.`;
   const [sort, setSort] = useState<Sort>({ key: "spend", dir: "desc" });
   const [open, setOpen] = useState<Set<string>>(new Set());
 
@@ -66,10 +73,11 @@ export function DrilldownTable({ campaigns, adsets, ads, defs }: Props) {
           <span className="text-provisional underline decoration-dotted underline-offset-4">like this</span> include days
           that aren&apos;t final yet.
         </CardDescription>
-        <CardAction>
+        <CardAction className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setOpen(allOpen ? new Set() : new Set(allIds))}>
             {allOpen ? "Collapse all" : "Expand all"}
           </Button>
+          <ExportMenu search={search} tables={["campaigns", "adsets", "ads"]} label="Export campaigns, ad sets and ads" />
         </CardAction>
       </CardHeader>
       <div className="px-4">
@@ -77,6 +85,11 @@ export function DrilldownTable({ campaigns, adsets, ads, defs }: Props) {
           <TableHeader>
             <TableRow>
               <TableHead className="min-w-64">Name</TableHead>
+              <TableHead className="text-right">
+                <span title={paceHelp} className="cursor-help underline decoration-dotted underline-offset-4">
+                  Budget pace ({pacing.days}d)
+                </span>
+              </TableHead>
               {COLUMNS.map((key) => (
                 <TableHead key={key} className="text-right" aria-sort={sort.key === key ? (sort.dir === "asc" ? "ascending" : "descending") : undefined}>
                   <button
@@ -96,7 +109,7 @@ export function DrilldownTable({ campaigns, adsets, ads, defs }: Props) {
           <TableBody>
             {campaigns.length === 0 && (
               <TableRow>
-                <TableCell colSpan={COLUMNS.length + 1} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={COLUMNS.length + 2} className="py-8 text-center text-muted-foreground">
                   No ad activity for these filters.
                 </TableCell>
               </TableRow>
@@ -111,6 +124,7 @@ export function DrilldownTable({ campaigns, adsets, ads, defs }: Props) {
                     level={0}
                     expanded={campaignOpen}
                     onToggle={() => toggle(c.campaign_id!)}
+                    pace={campaignPace.get(c.campaign_id!)}
                     name={c.campaign_name!}
                     meta={`${c.channel === "tiktok" ? "TikTok" : "Meta"} · ${c.country}`}
                   />
@@ -125,6 +139,7 @@ export function DrilldownTable({ campaigns, adsets, ads, defs }: Props) {
                             level={1}
                             expanded={adsetOpen}
                             onToggle={() => toggle(s.adset_id!)}
+                            pace={adsetPace.get(s.adset_id!)}
                             name={s.adset_name!}
                           />
                           {adsetOpen &&
@@ -159,11 +174,13 @@ type RowProps = {
   name: string;
   meta?: string;
   paused?: boolean;
+  /** Campaigns and ad sets only; ads have no budget. */
+  pace?: PacingFields;
   expanded?: boolean;
   onToggle?: () => void;
 };
 
-function Row({ row, defs, level, name, meta, paused, expanded, onToggle }: RowProps) {
+function Row({ row, defs, level, name, meta, paused, pace, expanded, onToggle }: RowProps) {
   return (
     <TableRow
       className={cn(level === 0 && "font-medium", level === 2 && "text-muted-foreground", onToggle && "cursor-pointer")}
@@ -196,6 +213,7 @@ function Row({ row, defs, level, name, meta, paused, expanded, onToggle }: RowPr
           )}
         </div>
       </TableCell>
+      <TableCell className="text-right tabular-nums">{pace && <PaceCell pace={pace} />}</TableCell>
       {COLUMNS.map((key) => {
         const notFinal = row.provisional.includes(key);
         return (
@@ -210,5 +228,34 @@ function Row({ row, defs, level, name, meta, paused, expanded, onToggle }: RowPr
         );
       })}
     </TableRow>
+  );
+}
+
+const PACE_LABEL = { over: "Over", under: "Under" } as const;
+
+function PaceCell({ pace }: { pace: PacingFields }) {
+  if (pace.pacing === "paused") return <span className="text-muted-foreground">Paused</span>;
+  const flag = pace.pacing === "over" || pace.pacing === "under" ? pace.pacing : null;
+  return (
+    <span
+      className="inline-flex items-center justify-end gap-1.5"
+      title={`${formatUsd(pace.avg_daily_spend)}/day vs ${formatUsd(pace.daily_budget_usd)} budget; ${formatUsd(pace.last_day_spend)} yesterday`}
+    >
+      {flag && (
+        <Badge
+          variant="outline"
+          className={cn(
+            "h-4.5 px-1.5 text-[10px]",
+            flag === "over" && "border-delta-bad/40 text-delta-bad",
+          )}
+        >
+          {PACE_LABEL[flag]}
+        </Badge>
+      )}
+      <span className={cn(flag === "over" && "text-delta-bad")}>
+        {formatPct(pace.pace)}
+      </span>
+      <span className="text-xs text-muted-foreground">of {formatUsd(pace.daily_budget_usd)}</span>
+    </span>
   );
 }

@@ -1,27 +1,20 @@
-import { existsSync } from "node:fs";
-import { DatabaseSync } from "node:sqlite";
 import fp from "fastify-plugin";
-import { Metrics } from "../metrics/query.js";
+import { type Database, openDatabase } from "../database/connection.js";
 
 declare module "fastify" {
   interface FastifyInstance {
-    metrics: Metrics;
+    /** Prisma over the ad data, read-only. Only repositories should query it. */
+    db: Database;
   }
 }
 
-/**
- * Opens the ad data read-only and exposes it as `app.metrics`. Fails at boot
- * when the file is missing, rather than on the first request.
- */
+/** Opens the ad data at boot, so a missing file fails startup rather than the first request. */
 export default fp(
   async (app) => {
-    const path = app.config.DB_PATH;
-    if (!existsSync(path)) {
-      throw new Error(`DB_PATH does not exist: ${path}`);
-    }
-    const db = new DatabaseSync(path, { readOnly: true });
-    app.decorate("metrics", new Metrics(db));
-    app.addHook("onClose", async () => db.close());
+    const db = openDatabase(app.config.DB_PATH);
+    await db.$connect();
+    app.decorate("db", db);
+    app.addHook("onClose", async () => db.$disconnect());
   },
-  { name: "data", dependencies: ["config"] },
+  { name: "database", dependencies: ["config"] },
 );

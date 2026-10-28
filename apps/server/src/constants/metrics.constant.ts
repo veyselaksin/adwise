@@ -5,7 +5,7 @@
  * Derived metrics are always a ratio of sums over the whole group, never an
  * average of daily ratios.
  */
-import type { BaseMetric, DerivedMetric, MetricDefinition, MetricInfo, MetricKey } from "../types/metrics.js";
+import type { BaseMetric, DerivedMetric, MetricDefinition, MetricInfo, MetricKey } from "../types/metrics.type.js";
 
 /** Additive columns summed straight from `ads_daily`. */
 export const BASE_METRICS = [

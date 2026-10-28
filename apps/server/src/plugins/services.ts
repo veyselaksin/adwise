@@ -1,0 +1,65 @@
+import { join } from "node:path";
+import fp from "fastify-plugin";
+import { GeminiClient } from "../clients/gemini.client.js";
+import { BudgetsRepository } from "../database/repositories/budgets.repository.js";
+import { EntitiesRepository } from "../database/repositories/entities.repository.js";
+import { MetricsRepository } from "../database/repositories/metrics.repository.js";
+import { AgentService } from "../services/agent.service.js";
+import { AuthService } from "../services/auth.service.js";
+import { BudgetsService } from "../services/budgets.service.js";
+import { EntitiesService } from "../services/entities.service.js";
+import { KnowledgeService } from "../services/knowledge.service.js";
+import { MetricsService } from "../services/metrics.service.js";
+import { ReleasesService } from "../services/releases.service.js";
+import type { ModelClient } from "../types/agent.type.js";
+
+export type Services = {
+  auth: AuthService;
+  metrics: MetricsService;
+  entities: EntitiesService;
+  budgets: BudgetsService;
+  releases: ReleasesService;
+  /** null when GEMINI_API_KEY isn't set. */
+  agent: AgentService | null;
+};
+
+export type ServicesOptions = {
+  /** Replaces Gemini, e.g. with a scripted model in tests. */
+  model?: ModelClient;
+};
+
+declare module "fastify" {
+  interface FastifyInstance {
+    services: Services;
+  }
+}
+
+/** Wires repositories into services once, at boot. Controllers reach them through `app.services`. */
+export default fp<ServicesOptions>(
+  async (app, opts) => {
+    const { config } = app;
+    const [metrics, releases, knowledge] = await Promise.all([
+      MetricsService.create(new MetricsRepository(app.db)),
+      ReleasesService.load(join(config.CASE_DIR, "build-logs")),
+      KnowledgeService.load(config.CASE_DIR),
+    ]);
+    const entities = new EntitiesService(new EntitiesRepository(app.db));
+    const budgets = new BudgetsService(new BudgetsRepository(app.db), metrics);
+
+    const model =
+      opts.model ?? (config.GEMINI_API_KEY ? new GeminiClient({ apiKey: config.GEMINI_API_KEY, model: config.GEMINI_MODEL }) : null);
+    if (!model) app.log.warn("GEMINI_API_KEY is not set; the agent is disabled");
+
+    app.decorate("services", {
+      auth: new AuthService({ user: config.APP_USER, password: config.APP_PASSWORD }, async (payload, signOpts) =>
+        app.jwt.sign(payload, signOpts),
+      ),
+      metrics,
+      entities,
+      budgets,
+      releases,
+      agent: model && new AgentService(model, { metrics, entities, budgets, releases }, knowledge, app.log),
+    });
+  },
+  { name: "services", dependencies: ["config", "auth", "database"] },
+);

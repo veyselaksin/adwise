@@ -1,0 +1,73 @@
+// Hand-written to match the case's SQLite file, which is read-only. Never run
+// `prisma migrate`, `db push` or `db pull` against it: prisma.config.ts gives
+// the CLI no database URL, so those commands fail on purpose.
+
+generator client {
+  provider               = "prisma-client"
+  output                 = "../src/generated/prisma"
+  moduleFormat           = "esm"
+  runtime                = "nodejs"
+  importFileExtension    = "js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Campaign {
+  id        String  @id @map("campaign_id")
+  channel   String
+  name      String
+  country   String
+  objective String
+  status    String
+  createdAt String  @map("created_at")
+  adSets    AdSet[]
+
+  @@map("campaigns")
+}
+
+model AdSet {
+  id             String   @id @map("adset_id")
+  campaignId     String   @map("campaign_id")
+  name           String
+  audienceId     String   @map("audience_id")
+  status         String
+  dailyBudgetUsd Float    @map("daily_budget_usd")
+  createdAt      String   @map("created_at")
+  campaign       Campaign @relation(fields: [campaignId], references: [id])
+  ads            Ad[]
+
+  @@map("ad_sets")
+}
+
+model Ad {
+  id           String    @id @map("ad_id")
+  adSetId      String    @map("adset_id")
+  name         String
+  creativeType String    @map("creative_type")
+  status       String
+  createdAt    String    @map("created_at")
+  adSet        AdSet     @relation(fields: [adSetId], references: [id])
+  daily        AdDaily[]
+
+  @@map("ads")
+}
+
+/// One ad's numbers for one install day. The table has no key; (date, ad_id) is unique in the data.
+model AdDaily {
+  date             String
+  adId             String @map("ad_id")
+  impressions      Int
+  clicks           Int
+  installs         Int
+  trials           Int
+  trialConversions Int    @map("trial_conversions")
+  subscriptions    Int
+  spendUsd         Float  @map("spend_usd")
+  d7RevenueUsd     Float  @map("d7_revenue_usd")
+  ad               Ad     @relation(fields: [adId], references: [id])
+
+  @@id([date, adId])
+  @@map("ads_daily")
+}

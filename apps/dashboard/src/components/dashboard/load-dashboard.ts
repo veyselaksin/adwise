@@ -1,5 +1,5 @@
 import "server-only";
-import { getCatalog, queryMetrics } from "@/lib/api";
+import { getBudgetPacing, getCatalog, queryMetrics } from "@/lib/api";
 import { apiFilters, type DashboardFilters } from "@/lib/filters";
 import { addDays, formatRange } from "@/lib/format";
 import { indexDefs } from "@/lib/metrics";
@@ -39,7 +39,8 @@ export async function loadDashboard(filters: DashboardFilters) {
   const cacRange = finalRange("cac") ?? range;
 
   const split = filters.split === "none" ? [] : [filters.split];
-  const [summary, series, countries, campaigns, adsets, ads, ...clamped] = await Promise.all([
+  const [pacing, summary, series, countries, campaigns, adsets, ads, ...clamped] = await Promise.all([
+    getBudgetPacing(),
     q({ compare: true }),
     q({ groupBy: ["date", ...split] }),
     q({ groupBy: ["country", "channel"] }, cacRange),
@@ -60,7 +61,7 @@ export async function loadDashboard(filters: DashboardFilters) {
     previousRange: summary.previous?.range,
     series: series.rows,
     countries: { rows: countries.rows, range: cacRange, excluded: excludedPart(range, cacRange) },
-    drilldown: { campaigns: campaigns.rows, adsets: adsets.rows, ads: ads.rows },
+    drilldown: { campaigns: campaigns.rows, adsets: adsets.rows, ads: ads.rows, pacing },
   };
 }
 
@@ -106,3 +107,5 @@ function clampToData(range: DateRange, first: string, last: string): DateRange {
 function excludedPart(range: DateRange, used: DateRange): DateRange | undefined {
   return used.to < range.to ? { from: addDays(used.to, 1), to: range.to } : undefined;
 }
+
+export type DashboardData = Awaited<ReturnType<typeof loadDashboard>>;

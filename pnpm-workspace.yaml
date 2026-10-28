@@ -3,5 +3,12 @@ packages:
 
 allowBuilds:
   esbuild: true
+  # Native SQLite driver behind Prisma's adapter: downloads a prebuilt binary or compiles one.
+  better-sqlite3: true
+  # Downloads the schema engine, used only by migrate/db push/db pull. The data is
+  # read-only and the schema is hand-written, so it's never needed.
+  "@prisma/engines": false
+  # Only a Node version check.
+  prisma: false
   sharp: false
   unrs-resolver: false

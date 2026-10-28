@@ -22,6 +22,11 @@ const EnvSchema = Type.Object({
   APP_USER: Type.String({ minLength: 1 }),
   APP_PASSWORD: Type.String({ minLength: 8 }),
   DB_PATH: Type.String({ minLength: 1 }),
+  /** The case folder: glossary.md, team-notes.md and build-logs/ are read from here at boot. */
+  CASE_DIR: Type.String({ minLength: 1 }),
+  /** Gemini API key for the agent. Empty disables the agent (its route answers 503 AGENT_DISABLED). */
+  GEMINI_API_KEY: Type.String({ default: "" }),
+  GEMINI_MODEL: Type.String({ minLength: 1, default: "gemini-3.5-flash" }),
 });
 
 export type Env = Static<typeof EnvSchema>;

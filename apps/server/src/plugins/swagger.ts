@@ -2,7 +2,7 @@ import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
 import fp from "fastify-plugin";
 import { version } from "../config/version.js";
-import { ErrorResponse } from "../schemas/common.js";
+import { ErrorResponse } from "../schemas/common.schema.js";
 import { docsThemeCss } from "../views/docs-theme.js";
 import docsAuth, { DOCS_PREFIX } from "./docs-auth.js";
 
@@ -38,6 +38,14 @@ export default fp(
             name: "metrics",
             description:
               "Ad performance from the warehouse, read-only. The dashboard and the agent use these same definitions.",
+          },
+          {
+            name: "budgets",
+            description: "Ad set spend against daily budgets over a recent window, read-only.",
+          },
+          {
+            name: "agent",
+            description: "The AI agent: answers questions from the same services, streaming each step.",
           },
         ],
         components: {

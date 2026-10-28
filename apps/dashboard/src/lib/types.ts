@@ -137,6 +137,7 @@ export type ChatMessage = { role: "user" | "assistant"; text: string };
 export type AgentEvent =
   | { type: "tool_call"; id: string; tool: string; label: string; args: Record<string, unknown> }
   | { type: "tool_result"; id: string; ok: boolean; summary: string }
+  | { type: "text_delta"; text: string }
   | { type: "note"; text: string }
   | { type: "answer"; text: string }
   | { type: "error"; code: string; message: string; retryAfterSeconds?: number }

@@ -2,12 +2,8 @@
  * Calendar helpers. Dates are `YYYY-MM-DD` strings in UTC, the same format as
  * `ads_daily.date`, so they compare correctly as plain strings.
  */
-
-export type DateRange = { from: string; to: string };
-
-export const DATE_PATTERN = "^\\d{4}-\\d{2}-\\d{2}$";
-
-const DAY_MS = 86_400_000;
+import { DATE_PATTERN, DAY_MS } from "../constants/dates.constant.js";
+import type { DateRange, RangePreset } from "../types/dates.type.js";
 
 const toTime = (date: string) => Date.parse(`${date}T00:00:00Z`);
 const fromTime = (ms: number) => new Date(ms).toISOString().slice(0, 10);
@@ -27,17 +23,11 @@ export function startOfWeek(date: string): string {
   return addDays(date, -((weekday + 6) % 7));
 }
 
-export const RANGE_PRESETS = [
-  "yesterday",
-  "last_7_days",
-  "last_14_days",
-  "last_28_days",
-  "last_week",
-  "this_week",
-  "this_month",
-  "last_month",
-] as const;
-export type RangePreset = (typeof RANGE_PRESETS)[number];
+/** The `days` full days ending on `lastDay`. */
+export const lastNDays = (days: number, lastDay: string): DateRange => ({
+  from: addDays(lastDay, -(days - 1)),
+  to: lastDay,
+});
 
 /**
  * Resolves the team's named periods (team-notes.md):
@@ -47,16 +37,15 @@ export type RangePreset = (typeof RANGE_PRESETS)[number];
  */
 export function resolvePreset(preset: RangePreset, today: string): DateRange {
   const yesterday = addDays(today, -1);
-  const lastNDays = (n: number) => ({ from: addDays(today, -n), to: yesterday });
   switch (preset) {
     case "yesterday":
       return { from: yesterday, to: yesterday };
     case "last_7_days":
-      return lastNDays(7);
+      return lastNDays(7, yesterday);
     case "last_14_days":
-      return lastNDays(14);
+      return lastNDays(14, yesterday);
     case "last_28_days":
-      return lastNDays(28);
+      return lastNDays(28, yesterday);
     case "last_week": {
       const monday = addDays(startOfWeek(today), -7);
       return { from: monday, to: addDays(monday, 6) };

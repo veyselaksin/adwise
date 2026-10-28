@@ -2,7 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE } from "./session";
-import type { Catalog, Entities, MetricsQuery, MetricsResult } from "./types";
+import type { BudgetPacing, Catalog, ChatMessage, Entities, MetricsQuery, MetricsResult } from "./types";
 
 // Server-side only: the API URL and the session token never reach the browser.
 const API_URL = process.env.API_URL ?? "http://localhost:4000";
@@ -77,3 +77,29 @@ export const getEntities = () => authed<Entities>("/entities");
 
 export const queryMetrics = (query: MetricsQuery) =>
   authed<MetricsResult>("/metrics/query", { method: "POST", body: JSON.stringify(query) });
+
+/** Last `days` full days' spend against each ad set's current budget; independent of the date filter. */
+export const getBudgetPacing = (days?: number) =>
+  authed<BudgetPacing>(`/budgets/pacing${days ? `?days=${days}` : ""}`);
+
+/**
+ * Asks the agent. Returns the API's response as is, because a successful one is
+ * a stream (NDJSON) for the browser to read step by step; errors keep the envelope.
+ * `null` when there is no session.
+ */
+export async function askAgent(messages: ChatMessage[], signal: AbortSignal): Promise<Response | null> {
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  if (!token) return null;
+  try {
+    return await fetch(`${API_URL}/agent/chat`, {
+      method: "POST",
+      cache: "no-store",
+      headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+      body: JSON.stringify({ messages }),
+      signal,
+    });
+  } catch (err) {
+    if (signal.aborted) throw err;
+    throw new ApiError("API_UNREACHABLE", "The API is not reachable. Try again in a moment.");
+  }
+}

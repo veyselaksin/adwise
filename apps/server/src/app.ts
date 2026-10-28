@@ -3,13 +3,12 @@ import Fastify, { type FastifyServerOptions } from "fastify";
 import fp from "fastify-plugin";
 import type { Env } from "./config/env.js";
 import auth from "./plugins/auth.js";
-import data from "./plugins/data.js";
+import database from "./plugins/database.js";
 import errorHandler from "./plugins/error-handler.js";
 import security from "./plugins/security.js";
+import services, { type ServicesOptions } from "./plugins/services.js";
 import swagger from "./plugins/swagger.js";
-import authRoutes from "./routes/auth.js";
-import health from "./routes/health.js";
-import metrics from "./routes/metrics.js";
+import routes from "./routes/index.js";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -17,7 +16,7 @@ declare module "fastify" {
   }
 }
 
-export async function buildApp(env: Env, opts: FastifyServerOptions = {}) {
+export async function buildApp(env: Env, opts: FastifyServerOptions = {}, overrides: ServicesOptions = {}) {
   const app = Fastify({
     logger: {
       level: env.LOG_LEVEL,
@@ -40,11 +39,10 @@ export async function buildApp(env: Env, opts: FastifyServerOptions = {}) {
   await app.register(security);
   await app.register(auth);
   await app.register(swagger);
-  await app.register(data);
+  await app.register(database);
+  await app.register(services, overrides);
 
-  await app.register(health);
-  await app.register(authRoutes);
-  await app.register(metrics);
+  await app.register(routes);
 
   return app;
 }

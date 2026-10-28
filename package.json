@@ -7,10 +7,10 @@
     "node": ">=26.12.1"
   },
   "scripts": {
-    "dev": "pnpm --parallel --filter dashboard --filter server dev",
-    "build": "pnpm -r build",
+    "dev": "node scripts/check-node.mjs && pnpm --parallel --filter dashboard --filter server dev",
+    "build": "node scripts/check-node.mjs && pnpm -r build",
     "lint": "pnpm -r lint",
-    "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test"
+    "typecheck": "node scripts/check-node.mjs && pnpm -r typecheck",
+    "test": "node scripts/check-node.mjs && pnpm -r test"
   }
 }

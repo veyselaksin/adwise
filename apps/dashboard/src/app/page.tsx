@@ -1,8 +1,11 @@
 import { LogOutIcon } from "lucide-react";
 import { Suspense } from "react";
+import { AgentProvider } from "@/components/agent/agent-provider";
+import { AgentToggle } from "@/components/agent/agent-toggle";
 import { Brand } from "@/components/brand";
 import { CountryTable } from "@/components/dashboard/country-table";
 import { DrilldownTable } from "@/components/dashboard/drilldown-table";
+import { ExportMenu } from "@/components/dashboard/export-menu";
 import { FilterBar } from "@/components/dashboard/filter-bar";
 import { KpiGrid } from "@/components/dashboard/kpi-grid";
 import { loadDashboard } from "@/components/dashboard/load-dashboard";
@@ -11,17 +14,18 @@ import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { parseFilters } from "@/lib/filters";
+import { filtersToSearch, parseFilters } from "@/lib/filters";
 import { formatDay } from "@/lib/format";
 import { signOut } from "./login/actions";
 
 export default function Home({ searchParams }: PageProps<"/">) {
   return (
-    <div className="flex flex-1 flex-col">
+    <AgentProvider>
       <header className="sticky top-0 z-20 border-b bg-background/85 backdrop-blur">
         <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
           <Brand />
           <div className="flex items-center gap-2">
+            <AgentToggle />
             <ThemeSwitcher />
             <form action={signOut}>
               <Button variant="ghost" size="sm" type="submit">
@@ -36,7 +40,7 @@ export default function Home({ searchParams }: PageProps<"/">) {
           <Dashboard searchParams={searchParams} />
         </Suspense>
       </main>
-    </div>
+    </AgentProvider>
   );
 }
 
@@ -44,6 +48,7 @@ async function Dashboard({ searchParams }: Pick<PageProps<"/">, "searchParams">)
   const filters = parseFilters(await searchParams);
   const data = await loadDashboard(filters);
   const { catalog, defs } = data;
+  const search = filtersToSearch(filters);
 
   return (
     <>
@@ -56,6 +61,7 @@ async function Dashboard({ searchParams }: Pick<PageProps<"/">, "searchParams">)
             ROAS through {formatDay(defs.d7_roas.lastFinalDate)}.
           </p>
         </div>
+        <ExportMenu search={search} />
       </div>
       <FilterBar
         filters={filters}
@@ -65,7 +71,7 @@ async function Dashboard({ searchParams }: Pick<PageProps<"/">, "searchParams">)
       <KpiGrid tiles={data.tiles} previousRange={data.previousRange} />
       <TrendChart filters={filters} range={data.range} rows={data.series} defs={defs} />
       <CountryTable rows={data.countries.rows} range={data.countries.range} excluded={data.countries.excluded} />
-      <DrilldownTable {...data.drilldown} defs={defs} />
+      <DrilldownTable {...data.drilldown} defs={defs} search={search} />
     </>
   );
 }
