@@ -76,7 +76,7 @@ export function DrilldownTable({ campaigns, adsets, ads, pacing, defs, search, r
           <span className="text-provisional underline decoration-dotted underline-offset-4">like this</span> include days
           that aren&apos;t final yet.
         </CardDescription>
-        <CardAction className="flex items-center gap-2">
+        <CardAction className="col-start-1 row-span-1 row-start-auto justify-self-start sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:justify-self-end flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setOpen(allOpen ? new Set() : new Set(allIds))}>
             {allOpen ? "Collapse all" : "Expand all"}
           </Button>

@@ -92,10 +92,10 @@ export function InvestigationWorkspace({ campaigns, bounds, initial, autorun, ba
             if (!problem && campaignId && !running) run();
           }}
         >
-          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+          <label className="flex w-full flex-col gap-1 text-xs text-muted-foreground sm:w-auto">
             Campaign
             <Select items={campaignItems} value={campaignId || null} onValueChange={(v) => v && setCampaignId(v)}>
-              <SelectTrigger aria-label="Campaign" className="min-w-72">
+              <SelectTrigger aria-label="Campaign" className="w-full sm:min-w-72">
                 <SelectValue placeholder="Choose a campaign" />
               </SelectTrigger>
               <SelectContent>

@@ -88,7 +88,7 @@ export function TrendChart({ filters, range, rows, defs, releases }: Props) {
             showReleases &&
             " Vertical lines are app releases; they line up by date only (the ad data has no iOS/Android split)."}
         </CardDescription>
-        <CardAction className="flex flex-wrap items-center gap-2">
+        <CardAction className="col-start-1 row-span-1 row-start-auto justify-self-start sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:justify-self-end flex flex-wrap items-center gap-2">
           {releases.length > 0 && (
             <Toggle
               variant="outline"

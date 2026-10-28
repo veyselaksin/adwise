@@ -42,7 +42,7 @@ async function Dashboard({ searchParams }: Pick<PageProps<"/">, "searchParams">)
       <Suspense fallback={<Skeleton className="h-40 w-full rounded-xl" />}>
         <MorningBrief search={search} />
       </Suspense>
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+      <div className="flex flex-col items-start gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Overview</h1>
           <p className="text-sm text-muted-foreground">

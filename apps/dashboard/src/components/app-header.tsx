@@ -13,30 +13,21 @@ const PAGES = [
   { href: "/rules", label: "Rules" },
 ] as const;
 
-/** The signed-in pages' header: brand, page links, then `children` (page actions) and sign-out. */
-export function AppHeader({ active, children }: { active: (typeof PAGES)[number]["href"]; children?: ReactNode }) {
+type Page = (typeof PAGES)[number]["href"];
+
+/**
+ * The signed-in pages' header: brand, page links, then `children` (page actions) and sign-out.
+ * On phones the page links get their own row, so the header never runs wider than the screen.
+ */
+export function AppHeader({ active, children }: { active: Page; children?: ReactNode }) {
   return (
     <header className="sticky top-0 z-20 border-b bg-background/85 backdrop-blur">
       <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
-        <div className="flex items-center gap-4">
+        <div className="flex min-w-0 items-center gap-4">
           <Brand />
-          <nav className="flex items-center gap-1">
-            {PAGES.map((page) => (
-              <Link
-                key={page.href}
-                href={page.href}
-                aria-current={page.href === active ? "page" : undefined}
-                className={cn(
-                  buttonVariants({ variant: "ghost", size: "sm" }),
-                  page.href === active ? "text-foreground" : "text-muted-foreground",
-                )}
-              >
-                {page.label}
-              </Link>
-            ))}
-          </nav>
+          <PageLinks active={active} className="max-sm:hidden" />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {children}
           <ThemeSwitcher />
           <form action={signOut}>
@@ -46,6 +37,27 @@ export function AppHeader({ active, children }: { active: (typeof PAGES)[number]
           </form>
         </div>
       </div>
+      <PageLinks active={active} className="h-10 overflow-x-auto border-t px-2.5 sm:hidden" />
     </header>
+  );
+}
+
+function PageLinks({ active, className }: { active: Page; className?: string }) {
+  return (
+    <nav className={cn("flex items-center gap-1", className)} aria-label="Pages">
+      {PAGES.map((page) => (
+        <Link
+          key={page.href}
+          href={page.href}
+          aria-current={page.href === active ? "page" : undefined}
+          className={cn(
+            buttonVariants({ variant: "ghost", size: "sm" }),
+            page.href === active ? "text-foreground" : "text-muted-foreground",
+          )}
+        >
+          {page.label}
+        </Link>
+      ))}
+    </nav>
   );
 }

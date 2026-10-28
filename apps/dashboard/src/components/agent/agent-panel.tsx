@@ -99,7 +99,7 @@ export function AgentPanel({ open, onClose }: { open: boolean; onClose: () => vo
     <aside
       aria-label="ADWISE agent"
       hidden={!open}
-      className="fixed inset-x-0 top-14 bottom-0 z-30 flex flex-col border-l bg-background shadow-lg lg:left-auto lg:w-[26rem] lg:shadow-none"
+      className="fixed inset-x-0 top-24 bottom-0 z-30 sm:top-14 flex flex-col border-l bg-background shadow-lg lg:left-auto lg:w-[26rem] lg:shadow-none"
     >
       <div className="flex h-12 shrink-0 items-center justify-between border-b px-3">
         <div className="flex items-center gap-2 text-sm font-medium">
