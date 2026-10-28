@@ -1,6 +1,7 @@
 import jwt from "@fastify/jwt";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
+import { failure } from "../lib/response.js";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -21,9 +22,7 @@ export default fp(
       try {
         await req.jwtVerify();
       } catch {
-        return reply.code(401).send({
-          error: { code: "UNAUTHORIZED", message: "Missing or invalid access token" },
-        });
+        return reply.code(401).send(failure("UNAUTHORIZED", "Missing or invalid access token"));
       }
     });
   },

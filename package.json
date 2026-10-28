@@ -7,7 +7,7 @@
     "node": ">=26.12.1"
   },
   "scripts": {
-    "dev": "pnpm --parallel --filter web --filter api dev",
+    "dev": "pnpm --parallel --filter dashboard --filter server dev",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",

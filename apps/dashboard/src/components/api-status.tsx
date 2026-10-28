@@ -10,7 +10,7 @@ export async function ApiStatus() {
 
   return (
     <Badge variant="secondary">
-      API {health.status} · v{health.version}
+      API {health.status} · {health.version}
     </Badge>
   );
 }

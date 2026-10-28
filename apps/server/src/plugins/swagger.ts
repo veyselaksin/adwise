@@ -1,31 +1,26 @@
-import { timingSafeEqual } from "node:crypto";
-import basicAuth from "@fastify/basic-auth";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
 import fp from "fastify-plugin";
-import { ErrorResponse } from "../schemas/common.js";
 import { version } from "../config/version.js";
-
-function safeEqual(a: string, b: string): boolean {
-  const left = Buffer.from(a);
-  const right = Buffer.from(b);
-  return left.length === right.length && timingSafeEqual(left, right);
-}
+import { ErrorResponse } from "../schemas/common.js";
+import { docsThemeCss } from "../views/docs-theme.js";
+import docsAuth, { DOCS_PREFIX } from "./docs-auth.js";
 
 const description = `
 REST API behind the Livensa ad performance dashboard and its AI agent.
 
 **Authentication**
 - Data endpoints require a JWT: click **Authorize** and paste the token as \`Bearer <token>\`.
-- These docs are protected with HTTP Basic auth (\`DOCS_USER\` / \`DOCS_PASSWORD\`).
+- These docs require a sign-in at \`/docs/login\` (\`DOCS_USER\` / \`DOCS_PASSWORD\`); sign out at \`/docs/logout\`.
+- Scripts can fetch the spec with HTTP Basic auth, e.g. \`curl -u user:pass /docs/json\`.
 
 **Conventions**
 - Money is USD, dates are \`YYYY-MM-DD\` (UTC).
-- Errors always use the \`ErrorResponse\` envelope: \`{ "error": { "code", "message" } }\`.
+- Every response uses one envelope. Success: \`{ "success": true, "message", "data" }\`. Error (\`ErrorResponse\`): \`{ "success": false, "message", "error": { "code" } }\`.
 - Requests are rate limited; over the limit you get \`429 RATE_LIMITED\`.
 `.trim();
 
-/** OpenAPI spec generated from route schemas, served at /docs behind Basic auth. */
+/** OpenAPI spec generated from route schemas, served at /docs behind a sign-in page. */
 export default fp(
   async (app) => {
     // Registered before routes so every schema that references it resolves.
@@ -52,21 +47,17 @@ export default fp(
 
     if (!app.config.DOCS_ENABLED) return;
 
-    await app.register(basicAuth, {
-      authenticate: { realm: "Ad Performance API docs" },
-      validate: async (username, password) => {
-        const ok =
-          safeEqual(username, app.config.DOCS_USER) &&
-          safeEqual(password, app.config.DOCS_PASSWORD);
-        if (!ok) throw new Error("Invalid docs credentials");
-      },
-    });
+    await app.register(docsAuth);
 
     await app.register(swaggerUi, {
-      routePrefix: "/docs",
+      routePrefix: DOCS_PREFIX,
       uiConfig: { docExpansion: "list", deepLinking: true, persistAuthorization: true },
-      uiHooks: { onRequest: app.basicAuth },
+      uiHooks: { onRequest: app.docsGuard },
       staticCSP: true,
+      theme: {
+        title: "Ad Performance API docs",
+        css: [{ filename: "overrides.css", content: docsThemeCss }],
+      },
     });
   },
   { name: "swagger", dependencies: ["config"] },

@@ -14,6 +14,7 @@ const EnvSchema = Type.Object({
   ),
   CORS_ORIGIN: Type.String({ default: "http://localhost:3000" }),
   JWT_SECRET: Type.String({ minLength: 32 }),
+  COOKIE_SECRET: Type.String({ minLength: 32 }),
   DOCS_ENABLED: Type.Boolean({ default: true }),
   DOCS_USER: Type.String({ minLength: 1 }),
   DOCS_PASSWORD: Type.String({ minLength: 8 }),

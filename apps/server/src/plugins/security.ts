@@ -2,6 +2,7 @@ import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import fp from "fastify-plugin";
+import { AppError } from "../lib/response.js";
 
 /** HTTP hardening: secure headers, CORS locked to the web app, global rate limit. */
 export default fp(
@@ -19,13 +20,9 @@ export default fp(
     await app.register(rateLimit, {
       max: 300,
       timeWindow: "1 minute",
-      errorResponseBuilder: (_req, ctx) => ({
-        statusCode: 429,
-        error: {
-          code: "RATE_LIMITED",
-          message: `Too many requests. Try again in ${ctx.after}.`,
-        },
-      }),
+      // The returned value is thrown, so it goes through the error handler.
+      errorResponseBuilder: (_req, ctx) =>
+        new AppError(429, "RATE_LIMITED", `Too many requests. Try again in ${ctx.after}.`),
     });
   },
   { name: "security" },
