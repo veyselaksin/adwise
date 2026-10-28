@@ -1,3 +1,5 @@
+import { brandIconDataUri } from "./brand-icon.js";
+
 const escapeHtml = (value: string) =>
   value.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
@@ -12,13 +14,13 @@ const HERO_WIDTHS = [1200, 1800, 2400, 3200, 4000];
  */
 const HERO_SIZES = "(min-width: 960px) max(52vw, calc((100vh - 24px) * 1.5)), 0px";
 
-/** CSP for the login page: only its own nonce'd style/script and the Unsplash image. */
+/** CSP for the login page: only its own nonce'd style/script, the Unsplash image and the inlined icon. */
 export const docsLoginCsp = (nonce: string) =>
   [
     "default-src 'none'",
     `style-src 'nonce-${nonce}'`,
     `script-src 'nonce-${nonce}'`,
-    "img-src https://images.unsplash.com",
+    "img-src https://images.unsplash.com data:",
     "form-action 'self'",
     "base-uri 'none'",
     "frame-ancestors 'none'",
@@ -50,6 +52,7 @@ export function renderDocsLogin({ action, nonce, error, username = "" }: LoginPa
   <meta name="robots" content="noindex">
   <meta name="color-scheme" content="light dark">
   <title>Sign in · ADWISE API</title>
+  <link rel="icon" type="image/png" sizes="48x48" href="${brandIconDataUri}">
   <script nonce="${nonce}">
     // Apply the saved theme before first paint to avoid a flash.
     try {
@@ -98,11 +101,7 @@ export function renderDocsLogin({ action, nonce, error, username = "" }: LoginPa
     .form-side { display: flex; flex-direction: column; padding: 16px 24px; }
     .topbar { display: flex; align-items: center; justify-content: space-between; height: 40px; }
     .brand { display: flex; align-items: center; gap: 8px; font-weight: 600; letter-spacing: -0.01em; }
-    .brand-mark {
-      display: grid; place-items: center; width: 24px; height: 24px; border-radius: 6px;
-      background: var(--primary); color: var(--primary-fg);
-    }
-    .brand-mark svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.5; }
+    .brand-mark { display: block; width: 24px; height: 24px; border-radius: 6px; }
 
     .theme { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--border);
       border-radius: 8px; background: var(--panel); }
@@ -158,7 +157,7 @@ export function renderDocsLogin({ action, nonce, error, username = "" }: LoginPa
     <div class="form-side">
       <div class="topbar">
         <div class="brand">
-          <span class="brand-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18V10M10 18V6M16 18v-5M22 18H2"/></svg></span>
+          <img class="brand-mark" src="${brandIconDataUri}" alt="" width="24" height="24">
           ADWISE
         </div>
         <div class="theme" role="group" aria-label="Color theme">

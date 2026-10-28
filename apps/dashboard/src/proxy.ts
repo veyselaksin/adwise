@@ -14,6 +14,6 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Everything except the sign-in page and static assets.
-  matcher: ["/((?!login|_next/static|_next/image|favicon.ico).*)"],
+  // Everything except the sign-in page and static assets (the app icons show on the sign-in page too).
+  matcher: ["/((?!login|_next/static|_next/image|icon.png|apple-icon.png|adwise-mark.png).*)"],
 };

@@ -3,6 +3,7 @@ import swaggerUi from "@fastify/swagger-ui";
 import fp from "fastify-plugin";
 import { version } from "../config/version.js";
 import { ErrorResponse } from "../schemas/common.schema.js";
+import { BRAND_ICON_BASE64 } from "../views/brand-icon.js";
 import { docsThemeCss } from "../views/docs-theme.js";
 import docsAuth, { DOCS_PREFIX } from "./docs-auth.js";
 
@@ -82,6 +83,15 @@ export default fp(
       theme: {
         title: "ADWISE API docs",
         css: [{ filename: "overrides.css", content: docsThemeCss }],
+        favicon: [
+          {
+            filename: "favicon.png",
+            rel: "icon",
+            type: "image/png",
+            sizes: "48x48",
+            content: Buffer.from(BRAND_ICON_BASE64, "base64"),
+          },
+        ],
       },
     });
   },
