@@ -3,7 +3,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AgentEvent, AgentExport, ChatMessage } from "@/lib/types";
 
-export type AgentStep = { id: string; label: string; status: "running" | "ok" | "failed"; summary?: string };
+export type AgentStep = {
+  id: string;
+  label: string;
+  status: "running" | "ok" | "failed";
+  summary?: string;
+  /** The call itself, so a `query_metrics` lookup can be pinned. Missing on turns saved before pins existed. */
+  tool?: string;
+  args?: Record<string, unknown>;
+};
 
 /** A file the agent made: a link to the dashboard's own export, so it matches the overview. */
 export type AgentDownload = { id: string; label: string; format: AgentExport["format"]; href: string };
@@ -63,7 +71,10 @@ function exportHref({ format, preset, from, to, channel, country, tables }: Agen
 function applyEvent(turn: AgentTurn, event: AgentEvent): AgentTurn {
   switch (event.type) {
     case "tool_call":
-      return { ...turn, steps: [...turn.steps, { id: event.id, label: event.label, status: "running" }] };
+      return {
+        ...turn,
+        steps: [...turn.steps, { id: event.id, label: event.label, status: "running", tool: event.tool, args: event.args }],
+      };
     case "tool_result":
       return {
         ...turn,

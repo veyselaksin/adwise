@@ -6,12 +6,14 @@ import { EntitiesRepository } from "../database/repositories/entities.repository
 import { MetricsRepository } from "../database/repositories/metrics.repository.js";
 import { AgentService } from "../services/agent.service.js";
 import { AuthService } from "../services/auth.service.js";
+import { BriefService } from "../services/brief.service.js";
 import { BudgetsService } from "../services/budgets.service.js";
 import { EntitiesService } from "../services/entities.service.js";
 import { InvestigationService } from "../services/investigation.service.js";
 import { KnowledgeService } from "../services/knowledge.service.js";
 import { McpService } from "../services/mcp.service.js";
 import { MetricsService } from "../services/metrics.service.js";
+import { PinsService } from "../services/pins.service.js";
 import { ReleasesService } from "../services/releases.service.js";
 import { RulesService } from "../services/rules.service.js";
 import type { ModelClient } from "../types/agent.type.js";
@@ -21,8 +23,10 @@ export type Services = {
   metrics: MetricsService;
   entities: EntitiesService;
   budgets: BudgetsService;
+  brief: BriefService;
   releases: ReleasesService;
   rules: RulesService;
+  pins: PinsService;
   /** null when ZENMUX_API_KEY isn't set. */
   agent: AgentService | null;
   /** Always on; without ZENMUX_API_KEY its reports have the facts but no interpretation. */
@@ -52,6 +56,7 @@ export default fp<ServicesOptions>(
       KnowledgeService.load(config.CASE_DIR),
       RulesService.load(config.RULES_PATH),
     ]);
+    const pins = await PinsService.load(config.PINS_PATH, metrics);
     const entities = new EntitiesService(new EntitiesRepository(app.db));
     const budgets = new BudgetsService(new BudgetsRepository(app.db), metrics);
 
@@ -65,8 +70,10 @@ export default fp<ServicesOptions>(
       metrics,
       entities,
       budgets,
+      brief: new BriefService(metrics, budgets, releases),
       releases,
       rules,
+      pins,
       agent: model && new AgentService(model, { metrics, entities, budgets, releases }, knowledge, rules, app.log),
       investigation: new InvestigationService({ metrics, entities, releases, knowledge, rules, model, log: app.log }),
       mcp: new McpService({ metrics, entities, budgets, releases }, knowledge, rules),

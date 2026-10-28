@@ -10,7 +10,7 @@ import { AppError } from "../lib/response.js";
 import { literals } from "../schemas/common.schema.js";
 import { Dimension, MetricKey, RangePreset } from "../schemas/metrics.schema.js";
 import type { ExportRequest, ToolDeclaration } from "../types/agent.type.js";
-import type { DimensionFields, MetricKey as MetricKeyType, MetricRow } from "../types/metrics.type.js";
+import type { DimensionFields, MetricKey as MetricKeyType, MetricRow, MetricsRequest } from "../types/metrics.type.js";
 import type { BudgetsService } from "./budgets.service.js";
 import type { EntitiesService } from "./entities.service.js";
 import type { MetricsService } from "./metrics.service.js";
@@ -47,7 +47,7 @@ const list = (description: string) => Type.Optional(Type.Array(Type.String(), { 
 
 /* ---------------------------------------------------------------- metrics */
 
-const QueryMetricsParams = Type.Object({
+export const QueryMetricsParams = Type.Object({
   preset: Type.Optional({
     ...RangePreset,
     description: "A named period from the team notes. Use this or from/to.",
@@ -76,6 +76,34 @@ const QueryMetricsParams = Type.Object({
   compare: Type.Optional(Type.Boolean({ description: "Also return totals for the previous period of the same length" })),
 });
 
+export type QueryMetricsArgs = Static<typeof QueryMetricsParams>;
+
+/**
+ * The metric layer's request for a query_metrics call. Pinned tiles store the
+ * call's arguments and re-run them through this, so a tile shows exactly what
+ * the agent looked up, with its period resolved again each time.
+ */
+export function metricsRequestFrom(a: QueryMetricsArgs): MetricsRequest {
+  if (!a.preset && !(a.from && a.to)) {
+    throw new AppError(400, "MISSING_RANGE", "Give `preset`, or both `from` and `to`.");
+  }
+  return {
+    ...(a.preset ? { preset: a.preset } : { range: { from: a.from!, to: a.to! } }),
+    groupBy: a.group_by,
+    filters: {
+      channels: a.channels,
+      countries: a.countries,
+      campaignIds: a.campaign_ids,
+      adsetIds: a.adset_ids,
+      adIds: a.ad_ids,
+      creativeTypes: a.creative_types,
+      adStatus: a.ad_status,
+    },
+    orderBy: a.order_by ? { metric: a.order_by, direction: a.order_direction ?? "desc" } : undefined,
+    compare: a.compare,
+  };
+}
+
 const queryMetrics = tool({
   name: "query_metrics",
   description: [
@@ -96,24 +124,7 @@ const queryMetrics = tool({
     return [`${what}${by}`, ...(filters.length ? [filters.join(", ")] : []), period, ...(a.compare ? ["vs previous"] : [])].join(" · ");
   },
   run: async (a, { metrics }) => {
-    if (!a.preset && !(a.from && a.to)) {
-      throw new AppError(400, "MISSING_RANGE", "Give `preset`, or both `from` and `to`.");
-    }
-    const res = await metrics.run({
-      ...(a.preset ? { preset: a.preset } : { range: { from: a.from!, to: a.to! } }),
-      groupBy: a.group_by,
-      filters: {
-        channels: a.channels,
-        countries: a.countries,
-        campaignIds: a.campaign_ids,
-        adsetIds: a.adset_ids,
-        adIds: a.ad_ids,
-        creativeTypes: a.creative_types,
-        adStatus: a.ad_status,
-      },
-      orderBy: a.order_by ? { metric: a.order_by, direction: a.order_direction ?? "desc" } : undefined,
-      compare: a.compare,
-    });
+    const res = await metrics.run(metricsRequestFrom(a));
 
     const keys = a.metrics?.length ? a.metrics : METRIC_KEYS;
     const limit = a.limit ?? AGENT_MAX_TOOL_ROWS;

@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { AgentMarkdown } from "./agent-markdown";
 import { CopyButton } from "./copy-button";
+import { PinButton } from "./pin-button";
 import { type AgentDownload, type AgentStep, type AgentTurn, useAgentChat } from "./use-agent-chat";
 import { useAgentModels } from "./use-agent-models";
 import { useSmoothText } from "./use-smooth-text";
@@ -312,7 +313,10 @@ function Turn({ turn, modelLabel, onRetry, onAsk }: TurnProps) {
             {turn.usage.steps} model call{turn.usage.steps === 1 ? "" : "s"} · {formatTokens(turn.usage.tokens)}{" "}
             tokens
           </p>
-          <CopyButton label="Copy answer" iconOnly text={turn.answer} />
+          <div className="flex items-center">
+            <PinButton question={turn.question} steps={turn.steps} />
+            <CopyButton label="Copy answer" iconOnly text={turn.answer} />
+          </div>
         </div>
       )}
 

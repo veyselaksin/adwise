@@ -8,7 +8,9 @@ import { ExportMenu } from "@/components/dashboard/export-menu";
 import { FilterBar } from "@/components/dashboard/filter-bar";
 import { KpiGrid } from "@/components/dashboard/kpi-grid";
 import { loadDashboard } from "@/components/dashboard/load-dashboard";
+import { MorningBrief } from "@/components/dashboard/morning-brief";
 import { TrendChart } from "@/components/dashboard/trend-chart";
+import { PinnedTiles } from "@/components/pins/pinned-tiles";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { filtersToSearch, parseFilters } from "@/lib/filters";
@@ -37,6 +39,9 @@ async function Dashboard({ searchParams }: Pick<PageProps<"/">, "searchParams">)
 
   return (
     <>
+      <Suspense fallback={<Skeleton className="h-40 w-full rounded-xl" />}>
+        <MorningBrief search={search} />
+      </Suspense>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Overview</h1>
@@ -54,7 +59,10 @@ async function Dashboard({ searchParams }: Pick<PageProps<"/">, "searchParams">)
         bounds={{ first: catalog.firstDataDate, last: catalog.lastDataDate }}
       />
       <KpiGrid tiles={data.tiles} previousRange={data.previousRange} />
-      <TrendChart filters={filters} range={data.range} rows={data.series} defs={defs} />
+      <Suspense fallback={<Skeleton className="h-14 w-full rounded-xl" />}>
+        <PinnedTiles defs={defs} />
+      </Suspense>
+      <TrendChart filters={filters} range={data.range} rows={data.series} defs={defs} releases={data.releases} />
       <CountryTable rows={data.countries.rows} range={data.countries.range} excluded={data.countries.excluded} />
       <DrilldownTable {...data.drilldown} defs={defs} search={search} range={data.range} />
     </>

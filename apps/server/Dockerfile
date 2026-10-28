@@ -33,7 +33,8 @@ FROM node:${NODE_VERSION}-bookworm-slim AS runtime
 ENV NODE_ENV=production \
   HOST=0.0.0.0 \
   PORT=4001 \
-  RULES_PATH=/app/apps/server/data/team-rules.json
+  RULES_PATH=/app/apps/server/data/team-rules.json \
+  PINS_PATH=/app/apps/server/data/pinned-tiles.json
 WORKDIR /app
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=prod-deps /app/apps/server/node_modules ./apps/server/node_modules

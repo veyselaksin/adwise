@@ -1,14 +1,17 @@
 "use client";
 
-import { CartesianGrid, Line, LineChart, ReferenceArea, XAxis, YAxis } from "recharts";
+import { RocketIcon } from "lucide-react";
+import { useState } from "react";
+import { CartesianGrid, Line, LineChart, ReferenceArea, ReferenceLine, XAxis, YAxis } from "recharts";
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { type ChartConfig, ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Toggle } from "@/components/ui/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { CHANNELS, CHART_METRICS, COUNTRIES, type DashboardFilters, type Split } from "@/lib/filters";
 import { addDays, formatCount, formatDay, formatMetric, formatPct, formatUsdCompact } from "@/lib/format";
 import type { MetricDefs } from "@/lib/metrics";
-import type { DateRange, MetricRow } from "@/lib/types";
+import type { DateRange, MetricRow, Release } from "@/lib/types";
 import { useFilterNavigation } from "./use-filter-navigation";
 
 /** Color follows the entity, so a filter never repaints a series. */
@@ -28,12 +31,19 @@ type Props = {
   range: DateRange;
   rows: MetricRow[];
   defs: MetricDefs;
+  /** App releases in the range, drawn as markers. */
+  releases: Release[];
 };
+
+const platformName = (r: Release) => `${r.platform === "ios" ? "iOS" : "Android"} ${r.version}`;
 
 type Point = { date: string } & Record<string, number | string | null>;
 
-export function TrendChart({ filters, range, rows, defs }: Props) {
+export function TrendChart({ filters, range, rows, defs, releases }: Props) {
   const { update } = useFilterNavigation(filters);
+  const [showReleases, setShowReleases] = useState(true);
+  const releasesByDate = new Map<string, Release[]>();
+  for (const r of releases) releasesByDate.set(r.date, [...(releasesByDate.get(r.date) ?? []), r]);
   const def = defs[filters.metric];
   const split: Split = filters.split;
   const lastFinal = def.lastFinalDate;
@@ -74,8 +84,23 @@ export function TrendChart({ filters, range, rows, defs }: Props) {
           {hasNotFinal
             ? `Dashed from ${formatDay(firstNotFinal)}: those days are still filling in (final after ${def.finalAfterDays} days).`
             : "All days shown are final."}
+          {releases.length > 0 &&
+            showReleases &&
+            " Vertical lines are app releases; they line up by date only (the ad data has no iOS/Android split)."}
         </CardDescription>
         <CardAction className="flex flex-wrap items-center gap-2">
+          {releases.length > 0 && (
+            <Toggle
+              variant="outline"
+              size="sm"
+              pressed={showReleases}
+              onPressedChange={setShowReleases}
+              aria-label="Show app releases"
+              title="Show app releases on the chart"
+            >
+              <RocketIcon /> Releases
+            </Toggle>
+          )}
           <Select items={metricItems} value={filters.metric} onValueChange={(v) => v && update({ metric: v })}>
             <SelectTrigger aria-label="Metric" size="sm" className="min-w-36">
               <SelectValue />
@@ -115,7 +140,7 @@ export function TrendChart({ filters, range, rows, defs }: Props) {
           </ul>
         )}
         <ChartContainer config={config} className="aspect-auto h-72 w-full">
-          <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 4 }}>
+          <LineChart data={data} margin={{ top: releases.length > 0 && showReleases ? 22 : 8, right: 12, bottom: 0, left: 4 }}>
             <CartesianGrid vertical={false} />
             {hasNotFinal && (
               <ReferenceArea
@@ -127,6 +152,24 @@ export function TrendChart({ filters, range, rows, defs }: Props) {
                 label={{ value: "Not final", position: "insideTopRight", fill: "var(--muted-foreground)", fontSize: 11 }}
               />
             )}
+            {showReleases &&
+              [...releasesByDate].map(([date, list]) => (
+                <ReferenceLine
+                  key={date}
+                  x={date}
+                  stroke="var(--muted-foreground)"
+                  strokeDasharray="2 3"
+                  strokeOpacity={0.7}
+                  ifOverflow="extendDomain"
+                  label={{
+                    value: list.map((r) => `${r.platform === "ios" ? "iOS" : "And."} ${r.version.replace(/\.0$/, "")}`).join(" · "),
+                    // Above the plot, clear of the "Not final" label inside it.
+                    position: "top",
+                    fill: "var(--muted-foreground)",
+                    fontSize: 10,
+                  }}
+                />
+              ))}
             <XAxis
               dataKey="date"
               tickLine={false}
@@ -162,6 +205,24 @@ export function TrendChart({ filters, range, rows, defs }: Props) {
                         </div>
                       );
                     })}
+                    {showReleases &&
+                      releasesByDate.get(point.date)?.map((r) => (
+                        <div key={r.version + r.platform} className="mt-2 max-w-64 border-t pt-1.5">
+                          <div className="flex items-center gap-1 font-medium">
+                            <RocketIcon className="size-3" aria-hidden="true" />
+                            {platformName(r)} released {r.released.slice(11)} UTC
+                          </div>
+                          <ul className="mt-0.5 text-muted-foreground">
+                            {r.commits.slice(0, 4).map((c) => (
+                              <li key={c.hash} className="truncate">
+                                {c.type ?? "change"}
+                                {c.scope && `(${c.scope})`}: {c.title}
+                              </li>
+                            ))}
+                            {r.commits.length > 4 && <li>+{r.commits.length - 4} more</li>}
+                          </ul>
+                        </div>
+                      ))}
                   </div>
                 );
               }}

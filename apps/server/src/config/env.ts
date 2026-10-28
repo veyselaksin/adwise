@@ -28,6 +28,8 @@ const EnvSchema = Type.Object({
   CASE_DIR: Type.String({ minLength: 1 }),
   /** Where the team rules added in the dashboard are saved (a JSON file the server writes). */
   RULES_PATH: Type.String({ minLength: 1, default: "data/team-rules.json" }),
+  /** Where tiles pinned from agent answers are saved (a JSON file the server writes). */
+  PINS_PATH: Type.String({ minLength: 1, default: "data/pinned-tiles.json" }),
   /** ZenMux API key for the agent's models. Empty disables the agent (its route answers 503 AGENT_DISABLED). */
   ZENMUX_API_KEY: Type.String({ default: "" }),
   /** The model that answers when the dashboard doesn't pick one; one of AGENT_MODELS. */

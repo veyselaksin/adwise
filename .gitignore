@@ -57,5 +57,5 @@ CLAUDE.md
 CLAUDE.local.md
 .claude/settings.local.json
 
-# Team rules written by the server (RULES_PATH default)
+# Team rules and pinned tiles written by the server (RULES_PATH, PINS_PATH defaults)
 apps/server/data/

@@ -1,5 +1,5 @@
 import "server-only";
-import { getBudgetPacing, getCatalog, queryMetrics } from "@/lib/api";
+import { getBudgetPacing, getCatalog, getReleases, queryMetrics } from "@/lib/api";
 import { apiFilters, type DashboardFilters } from "@/lib/filters";
 import { addDays, formatRange } from "@/lib/format";
 import { indexDefs } from "@/lib/metrics";
@@ -39,7 +39,8 @@ export async function loadDashboard(filters: DashboardFilters) {
   const cacRange = finalRange("cac") ?? range;
 
   const split = filters.split === "none" ? [] : [filters.split];
-  const [pacing, summary, series, countries, campaigns, adsets, ads, ...clamped] = await Promise.all([
+  const [releases, pacing, summary, series, countries, campaigns, adsets, ads, ...clamped] = await Promise.all([
+    getReleases(range),
     getBudgetPacing(),
     q({ compare: true }),
     q({ groupBy: ["date", ...split] }),
@@ -60,6 +61,7 @@ export async function loadDashboard(filters: DashboardFilters) {
     tiles,
     previousRange: summary.previous?.range,
     series: series.rows,
+    releases,
     countries: { rows: countries.rows, range: cacRange, excluded: excludedPart(range, cacRange) },
     drilldown: { campaigns: campaigns.rows, adsets: adsets.rows, ads: ads.rows, pacing },
   };

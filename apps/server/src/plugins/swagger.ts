@@ -45,8 +45,16 @@ export default fp(
             description: "Ad set spend against daily budgets over a recent window, read-only.",
           },
           {
+            name: "releases",
+            description: "App releases parsed from the case's build logs, read-only.",
+          },
+          {
             name: "rules",
             description: "Answering rules the team adds without a code change; enabled ones go to the agent on every question.",
+          },
+          {
+            name: "pins",
+            description: "Agent lookups pinned to the overview as live tiles; re-run on the metric layer, no model call.",
           },
           {
             name: "agent",

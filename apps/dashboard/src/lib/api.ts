@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { SESSION_COOKIE } from "./session";
 import type {
   AgentModels,
+  Brief,
   BudgetPacing,
   Catalog,
   ChatMessage,
@@ -11,6 +12,9 @@ import type {
   InvestigationRequest,
   MetricsQuery,
   MetricsResult,
+  Pin,
+  PinResult,
+  Release,
   Rule,
 } from "./types";
 
@@ -91,6 +95,23 @@ export const queryMetrics = (query: MetricsQuery) =>
 /** Last `days` full days' spend against each ad set's current budget; independent of the date filter. */
 export const getBudgetPacing = (days?: number) =>
   authed<BudgetPacing>(`/budgets/pacing${days ? `?days=${days}` : ""}`);
+
+/** App releases shipped in `range` (by release day), with their commits. */
+export const getReleases = (range: { from: string; to: string }) =>
+  authed<Release[]>(`/releases?${new URLSearchParams(range)}`);
+
+/** What changed yesterday, from the server's fixed checks; ignores the overview's filters. */
+export const getBrief = () => authed<Brief>("/brief");
+
+export const getPins = () => authed<Pin[]>("/pins");
+
+/** A pinned tile's query, run now. */
+export const getPinResult = (id: string) => authed<PinResult>(`/pins/${encodeURIComponent(id)}/result`);
+
+export const createPin = (title: string, query: Record<string, unknown>) =>
+  authed<Pin>("/pins", { method: "POST", body: JSON.stringify({ title, query }) });
+
+export const deletePin = (id: string) => authed<Pin>(`/pins/${encodeURIComponent(id)}`, { method: "DELETE" });
 
 export const getRules = () => authed<Rule[]>("/rules");
 

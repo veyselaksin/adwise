@@ -279,3 +279,41 @@ export type InvestigationEvent =
   | { type: "done"; model: string | null; usage: { inputTokens: number; outputTokens: number } };
 
 export type InvestigationRequest = { campaignId: string; from: string; to: string; model?: string };
+
+/* -------------------------------------------- releases, brief, pinned tiles */
+
+export type Release = {
+  platform: "ios" | "android";
+  version: string;
+  /** `YYYY-MM-DD HH:mm` UTC. */
+  released: string;
+  date: string;
+  commits: ReleaseEvidence["commits"];
+};
+
+export type BriefItem = {
+  id: string;
+  kind: "cost_per_trial" | "cac" | "pacing" | "release";
+  tone: "bad" | "good" | "info";
+  title: string;
+  detail: string;
+  investigate?: { campaignId: string; from: string; to: string };
+};
+
+export type Brief = {
+  date: string;
+  week: DateRange;
+  weekBefore: DateRange;
+  cacFinalThrough: string;
+  yesterday: { spend: number; trials: number; subscriptions: number; cost_per_trial: number | null; cac: number | null; cacFinal: boolean };
+  baseline: { avgDailySpend: number; cost_per_trial: number | null; cac: number | null; cacFinal: boolean };
+  previousWeekCac: number | null;
+  headline: string;
+  items: BriefItem[];
+  more: number;
+};
+
+/** An agent `query_metrics` call pinned to the overview. */
+export type Pin = { id: string; title: string; label: string; query: Record<string, unknown>; createdAt: string };
+
+export type PinResult = { pin: Pin; metrics: MetricKey[]; result: MetricsResult; rowsOmitted: number };
