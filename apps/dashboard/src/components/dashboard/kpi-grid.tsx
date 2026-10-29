@@ -2,21 +2,10 @@ import { ArrowDownRightIcon, ArrowRightIcon, ArrowUpRightIcon } from "lucide-rea
 import { Card } from "@/components/ui/card";
 import { formatMetric, formatRange } from "@/lib/format";
 import { change } from "@/lib/metrics";
-import type { DateRange, MetricDefinition } from "@/lib/types";
+import type { DateRange } from "@/types/dates.type";
+import type { KpiTile } from "@/types/metrics.type";
 import { cn } from "@/lib/utils";
 import { NotFinal } from "./not-final";
-
-export type KpiTile = {
-  def: MetricDefinition;
-  value: number | null;
-  previous: number | null;
-  /** The period the value covers, when it differs from the selected one. */
-  range?: DateRange;
-  /** Set when the value itself will still change. */
-  notFinal?: string;
-  /** Set when the value excludes recent days that aren't final. */
-  note?: string;
-};
 
 export function KpiGrid({ tiles, previousRange }: { tiles: KpiTile[]; previousRange?: DateRange }) {
   return (

@@ -1,66 +1,16 @@
 // Dashboard state lives in the URL, so a view can be bookmarked or shared.
 
-import type { DateRange, MetricKey, RangePreset } from "./types";
-
-export const PRESET_LABELS: Record<RangePreset, string> = {
-  yesterday: "Yesterday",
-  last_7_days: "Last 7 days",
-  last_14_days: "Last 14 days",
-  last_28_days: "Last 28 days",
-  last_week: "Last week (Mon–Sun)",
-  this_week: "This week",
-  this_month: "This month",
-  last_month: "Last month",
-};
-
-export const CHANNELS = [
-  { value: "meta", label: "Meta" },
-  { value: "tiktok", label: "TikTok" },
-] as const;
-
-export const COUNTRIES = [
-  { value: "US", label: "United States" },
-  { value: "GB", label: "United Kingdom" },
-  { value: "DE", label: "Germany" },
-  { value: "BR", label: "Brazil" },
-] as const;
-
-export const CHART_METRICS: MetricKey[] = [
-  "spend",
-  "cac",
-  "cost_per_trial",
-  "trial_to_sub",
-  "d7_roas",
-  "installs",
-  "subscriptions",
-  "cpi",
-  "ctr",
-];
-
-export type Split = "channel" | "country" | "none";
-
-export type DashboardFilters = {
-  preset: RangePreset | "custom";
-  /** Only for `custom`. */
-  range?: DateRange;
-  channel: string | "all";
-  country: string | "all";
-  metric: MetricKey;
-  split: Split;
-};
-
-export const DEFAULT_FILTERS: DashboardFilters = {
-  preset: "last_14_days",
-  channel: "all",
-  country: "all",
-  metric: "cac",
-  split: "channel",
-};
+import { DATE_PATTERN } from "@/constants/dates.constant";
+import { CHANNELS, COUNTRIES, DEFAULT_FILTERS, PRESET_LABELS } from "@/constants/filters.constant";
+import { CHART_METRICS } from "@/constants/metrics.constant";
+import type { RangePreset } from "@/types/dates.type";
+import type { DashboardFilters } from "@/types/filters.type";
+import type { MetricKey } from "@/types/metrics.type";
 
 type Params = Record<string, string | string[] | undefined>;
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
-const isDate = (v: string | undefined): v is string => !!v && /^\d{4}-\d{2}-\d{2}$/.test(v);
+const isDate = (v: string | undefined): v is string => !!v && DATE_PATTERN.test(v);
 
 /** Parses search params, falling back to defaults for anything unknown. */
 export function parseFilters(params: Params): DashboardFilters {

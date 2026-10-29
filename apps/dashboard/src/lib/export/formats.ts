@@ -1,30 +1,14 @@
 import "server-only";
+import { CSV_DEFAULT_TABLE, EXPORT_FORMATS } from "@/constants/export.constant";
 import { formatMetric } from "@/lib/format";
-import type { Unit } from "@/lib/types";
+import type { CellValue, ExportFormat, ExportReport, ExportRow, ExportTable } from "@/types/export.type";
+import type { Unit } from "@/types/metrics.type";
 import { toCsv } from "./csv";
 import { toMarkdown } from "./markdown";
 import { toPdf } from "./pdf";
-import type { CellValue, ExportReport, ExportRow, ExportTable } from "./report";
 import { toXlsx } from "./xlsx";
 
-export const EXPORT_FORMATS = {
-  pdf: { label: "PDF report", extension: "pdf", contentType: "application/pdf" },
-  xlsx: {
-    label: "Excel workbook",
-    extension: "xlsx",
-    contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  },
-  csv: { label: "CSV (ads)", extension: "csv", contentType: "text/csv; charset=utf-8" },
-  json: { label: "JSON", extension: "json", contentType: "application/json; charset=utf-8" },
-  md: { label: "Markdown", extension: "md", contentType: "text/markdown; charset=utf-8" },
-} as const;
-
-export type ExportFormat = keyof typeof EXPORT_FORMATS;
-
 export const isExportFormat = (value: string | null): value is ExportFormat => !!value && value in EXPORT_FORMATS;
-
-/** CSV holds one table: ads when included, since they roll up to every other level. */
-export const CSV_DEFAULT_TABLE = "ads";
 
 /**
  * Renders the report, or only `tables` of it (e.g. a single card's export).

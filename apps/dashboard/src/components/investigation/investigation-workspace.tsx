@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { addDays, formatDay, formatRange } from "@/lib/format";
-import type { Entities } from "@/lib/types";
+import type { Entities } from "@/types/entities.type";
 import { cn } from "@/lib/utils";
 import { InvestigationReport } from "./investigation-report";
 import { StageList } from "./stage-list";

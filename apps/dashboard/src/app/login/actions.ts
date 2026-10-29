@@ -3,9 +3,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ApiError, login } from "@/lib/api";
-import { SESSION_COOKIE } from "@/lib/session";
-
-export type LoginState = { error?: string; username?: string };
+import { SESSION_COOKIE } from "@/constants/auth.constant";
+import type { LoginState } from "@/types/auth.type";
 
 export async function signIn(_prev: LoginState, form: FormData): Promise<LoginState> {
   const username = String(form.get("username") ?? "").trim();

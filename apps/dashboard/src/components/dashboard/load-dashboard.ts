@@ -1,21 +1,12 @@
 import "server-only";
 import { getBudgetPacing, getCatalog, getReleases, queryMetrics } from "@/lib/api";
-import { apiFilters, type DashboardFilters } from "@/lib/filters";
+import { KPI_METRICS } from "@/constants/metrics.constant";
+import type { DateRange } from "@/types/dates.type";
+import type { DashboardFilters } from "@/types/filters.type";
+import type { KpiTile, MetricKey, MetricsQuery, MetricsResult } from "@/types/metrics.type";
+import { apiFilters } from "@/lib/filters";
 import { addDays, formatRange } from "@/lib/format";
 import { indexDefs } from "@/lib/metrics";
-import type { DateRange, MetricKey, MetricsQuery, MetricsResult } from "@/lib/types";
-import type { KpiTile } from "./kpi-grid";
-
-const KPI_METRICS: MetricKey[] = [
-  "spend",
-  "installs",
-  "trials",
-  "subscriptions",
-  "cac",
-  "cost_per_trial",
-  "trial_to_sub",
-  "d7_roas",
-];
 
 /** Fetches everything the overview needs, in parallel, for the filters in the URL. */
 export async function loadDashboard(filters: DashboardFilters) {

@@ -8,23 +8,12 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatMetric, formatPct, formatRange, formatUsd } from "@/lib/format";
-import type { MetricDefs } from "@/lib/metrics";
-import type { BudgetPacing, DateRange, MetricKey, MetricRow, PacingFields } from "@/lib/types";
+import { DETAIL_METRICS } from "@/constants/metrics.constant";
+import type { BudgetPacing, PacingFields } from "@/types/budgets.type";
+import type { DateRange } from "@/types/dates.type";
+import type { MetricDefs, MetricKey, MetricRow } from "@/types/metrics.type";
 import { cn } from "@/lib/utils";
 import { ExportMenu } from "./export-menu";
-
-const COLUMNS: MetricKey[] = [
-  "spend",
-  "installs",
-  "trials",
-  "subscriptions",
-  "cpi",
-  "cost_per_trial",
-  "cac",
-  "trial_to_sub",
-  "d7_roas",
-  "ctr",
-];
 
 type Sort = { key: MetricKey; dir: "asc" | "desc" };
 
@@ -93,7 +82,7 @@ export function DrilldownTable({ campaigns, adsets, ads, pacing, defs, search, r
                   Budget pace ({pacing.days}d)
                 </span>
               </TableHead>
-              {COLUMNS.map((key) => (
+              {DETAIL_METRICS.map((key) => (
                 <TableHead key={key} className="text-right" aria-sort={sort.key === key ? (sort.dir === "asc" ? "ascending" : "descending") : undefined}>
                   <button
                     type="button"
@@ -112,7 +101,7 @@ export function DrilldownTable({ campaigns, adsets, ads, pacing, defs, search, r
           <TableBody>
             {campaigns.length === 0 && (
               <TableRow>
-                <TableCell colSpan={COLUMNS.length + 2} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={DETAIL_METRICS.length + 2} className="py-8 text-center text-muted-foreground">
                   No ad activity for these filters.
                 </TableCell>
               </TableRow>
@@ -221,7 +210,7 @@ function Row({ row, defs, level, name, meta, paused, pace, expanded, onToggle, a
         </div>
       </TableCell>
       <TableCell className="text-right tabular-nums">{pace && <PaceCell pace={pace} />}</TableCell>
-      {COLUMNS.map((key) => {
+      {DETAIL_METRICS.map((key) => {
         const notFinal = row.provisional.includes(key);
         return (
           <TableCell key={key} className="text-right tabular-nums">

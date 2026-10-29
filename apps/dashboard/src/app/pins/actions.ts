@@ -2,8 +2,7 @@
 
 import { refresh } from "next/cache";
 import { ApiError, createPin, deletePin } from "@/lib/api";
-
-export type PinActionResult = { error?: string; ok?: boolean };
+import type { PinActionResult } from "@/types/pins.type";
 
 /** Runs a change, then refreshes the page so the overview shows it. API errors come back as text. */
 async function change(run: () => Promise<unknown>): Promise<PinActionResult> {

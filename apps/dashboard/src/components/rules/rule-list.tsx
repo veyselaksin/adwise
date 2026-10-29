@@ -3,11 +3,11 @@
 import { CheckIcon, Loader2Icon, PencilIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useOptimistic, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { addRule, editRule, removeRule, type RuleResult, switchRule } from "@/app/rules/actions";
+import { addRule, editRule, removeRule, switchRule } from "@/app/rules/actions";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import type { Rule } from "@/lib/types";
+import type { Rule, RuleResult } from "@/types/rules.type";
 import { cn } from "@/lib/utils";
 
 const updated = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });

@@ -1,5 +1,5 @@
 import { formatCell } from "./formats";
-import type { ExportReport, ExportTable } from "./report";
+import type { ExportReport, ExportTable } from "@/types/export.type";
 
 /**
  * The report as GitHub-flavoured Markdown, formatted like the dashboard (USD two

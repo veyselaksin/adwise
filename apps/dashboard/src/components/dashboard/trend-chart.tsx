@@ -8,10 +8,13 @@ import { type ChartConfig, ChartContainer, ChartTooltip } from "@/components/ui/
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { CHANNELS, CHART_METRICS, COUNTRIES, type DashboardFilters, type Split } from "@/lib/filters";
+import { CHANNELS, COUNTRIES } from "@/constants/filters.constant";
+import { CHART_METRICS } from "@/constants/metrics.constant";
+import type { DateRange } from "@/types/dates.type";
+import type { DashboardFilters, Split } from "@/types/filters.type";
+import type { MetricDefs, MetricRow } from "@/types/metrics.type";
+import type { Release } from "@/types/releases.type";
 import { addDays, formatCount, formatDay, formatMetric, formatPct, formatUsdCompact } from "@/lib/format";
-import type { MetricDefs } from "@/lib/metrics";
-import type { DateRange, MetricRow, Release } from "@/lib/types";
 import { useFilterNavigation } from "./use-filter-navigation";
 
 /** Color follows the entity, so a filter never repaints a series. */

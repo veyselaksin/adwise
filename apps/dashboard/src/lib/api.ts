@@ -1,22 +1,17 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { SESSION_COOKIE } from "./session";
-import type {
-  AgentModels,
-  Brief,
-  BudgetPacing,
-  Catalog,
-  ChatMessage,
-  Entities,
-  InvestigationRequest,
-  MetricsQuery,
-  MetricsResult,
-  Pin,
-  PinResult,
-  Release,
-  Rule,
-} from "./types";
+import { SESSION_COOKIE } from "@/constants/auth.constant";
+import type { AgentModels, ChatMessage } from "@/types/agent.type";
+import type { Brief } from "@/types/brief.type";
+import type { BudgetPacing } from "@/types/budgets.type";
+import type { Entities } from "@/types/entities.type";
+import type { Health } from "@/types/health.type";
+import type { InvestigationRequest } from "@/types/investigation.type";
+import type { Catalog, MetricsQuery, MetricsResult } from "@/types/metrics.type";
+import type { Pin, PinResult } from "@/types/pins.type";
+import type { Release } from "@/types/releases.type";
+import type { Rule } from "@/types/rules.type";
 
 // Server-side only: the API URL and the session token never reach the browser.
 const API_URL = process.env.API_URL ?? "http://localhost:4000";
@@ -68,8 +63,6 @@ async function authed<T>(path: string, init: RequestInit = {}): Promise<T> {
     throw err;
   }
 }
-
-export type Health = { status: "ok"; uptime: number; version: string };
 
 export async function getHealth(): Promise<Health | null> {
   try {

@@ -1,28 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type {
-  InvestigationEvent,
-  InvestigationFacts,
-  InvestigationRequest,
-  InvestigationStageKey,
-  Interpretation,
-} from "@/lib/types";
-
-export type Stage = { key: InvestigationStageKey; label: string; status: "pending" | "running" | "done" | "skipped" };
-
-export type InvestigationState = {
-  status: "idle" | "running" | "done" | "stopped";
-  request?: InvestigationRequest;
-  stages: Stage[];
-  facts?: InvestigationFacts;
-  interpretation?: Interpretation;
-  error?: { code: string; message: string };
-  model?: string | null;
-};
+import type { InvestigationEvent, InvestigationRequest, InvestigationStage, InvestigationState } from "@/types/investigation.type";
 
 /** Shown before the server reports them, so the whole path is visible from the start. */
-const STAGES: Stage[] = [
+const STAGES: InvestigationStage[] = [
   { key: "validate", label: "Checking campaign and dates", status: "pending" },
   { key: "current", label: "Loading the selected period", status: "pending" },
   { key: "previous", label: "Loading the previous period", status: "pending" },

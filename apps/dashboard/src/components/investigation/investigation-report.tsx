@@ -5,7 +5,7 @@ import { NotFinal } from "@/components/dashboard/not-final";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatRange } from "@/lib/format";
-import type { Finding, InvestigationFacts, MetricComparison } from "@/lib/types";
+import type { Finding, InvestigationFacts, InvestigationState, MetricComparison } from "@/types/investigation.type";
 import { cn } from "@/lib/utils";
 import {
   assessmentClass,
@@ -21,7 +21,6 @@ import {
   MoversTable,
   ReleaseItem,
 } from "./evidence";
-import type { InvestigationState } from "./use-investigation";
 
 /** Errors that only mean "no AI reading": the figures are still complete. */
 const SOFT_ERRORS = new Set(["AGENT_DISABLED"]);

@@ -1,14 +1,13 @@
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CHANNELS, COUNTRIES } from "@/lib/filters";
+import { CHANNELS, COUNTRIES } from "@/constants/filters.constant";
+import { MIN_SUBSCRIPTIONS } from "@/constants/metrics.constant";
+import type { DateRange } from "@/types/dates.type";
+import type { MetricRow } from "@/types/metrics.type";
 import { formatPct, formatRange, formatUsd } from "@/lib/format";
 import { combineRows } from "@/lib/metrics";
-import type { DateRange, MetricRow } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { NotFinal } from "./not-final";
-
-/** Team note 6: don't call a winner below 20 subscriptions. */
-const MIN_SUBSCRIPTIONS = 20;
 
 type Props = {
   rows: MetricRow[];

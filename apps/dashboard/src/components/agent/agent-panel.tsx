@@ -18,15 +18,15 @@ import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { MAX_QUESTION_CHARS } from "@/constants/agent.constant";
+import type { AgentDownload, AgentStep, AgentTurn } from "@/types/agent.type";
 import { cn } from "@/lib/utils";
 import { AgentMarkdown } from "./agent-markdown";
 import { CopyButton } from "./copy-button";
 import { PinButton } from "./pin-button";
-import { type AgentDownload, type AgentStep, type AgentTurn, useAgentChat } from "./use-agent-chat";
+import { useAgentChat } from "./use-agent-chat";
 import { useAgentModels } from "./use-agent-models";
 import { useSmoothText } from "./use-smooth-text";
-
-const MAX_QUESTION = 2000;
 
 /** Entrance for anything that appears while an answer streams; skipped for reduced motion. */
 const ENTER = "motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300";
@@ -143,7 +143,7 @@ export function AgentPanel({ open, onClose }: { open: boolean; onClose: () => vo
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={onKeyDown}
-            maxLength={MAX_QUESTION}
+            maxLength={MAX_QUESTION_CHARS}
             rows={2}
             placeholder="Ask about spend, CAC, ad sets, releases…"
             aria-label="Your question"

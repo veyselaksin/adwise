@@ -1,7 +1,8 @@
 // Client-safe helpers over API rows. Formulas mirror the server's glossary
 // definitions; use them only to combine rows the API already returned.
 
-import { BASE_METRICS, type BaseMetric, type MetricDefinition, type MetricKey, type MetricRow } from "./types";
+import { BASE_METRICS } from "@/constants/metrics.constant";
+import type { BaseMetric, MetricDefinition, MetricDefs, MetricKey, MetricRow } from "@/types/metrics.type";
 
 /** Sums base metrics over rows and re-derives the ratios (never averages ratios). */
 export function combineRows(rows: MetricRow[]): MetricRow {
@@ -23,8 +24,6 @@ export function combineRows(rows: MetricRow[]): MetricRow {
     provisional: [...provisional],
   };
 }
-
-export type MetricDefs = Record<MetricKey, MetricDefinition>;
 
 export const indexDefs = (metrics: MetricDefinition[]) =>
   Object.fromEntries(metrics.map((m) => [m.key, m])) as MetricDefs;

@@ -3,15 +3,13 @@
 import { ChevronDownIcon } from "lucide-react";
 import { type ReactNode, useSyncExternalStore } from "react";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { BRIEF_COLLAPSED_EVENT, STORAGE_KEYS } from "@/constants/storage.constant";
 import { cn } from "@/lib/utils";
-
-const KEY = "adwise.brief.collapsed";
-const EVENT = "adwise:brief-collapsed";
 
 // Collapsed or not is a per-browser convenience: storage may be blocked, and then it simply stays open.
 function readCollapsed(): boolean {
   try {
-    return localStorage.getItem(KEY) === "1";
+    return localStorage.getItem(STORAGE_KEYS.briefCollapsed) === "1";
   } catch {
     return false;
   }
@@ -19,10 +17,10 @@ function readCollapsed(): boolean {
 
 function subscribe(onChange: () => void) {
   window.addEventListener("storage", onChange);
-  window.addEventListener(EVENT, onChange);
+  window.addEventListener(BRIEF_COLLAPSED_EVENT, onChange);
   return () => {
     window.removeEventListener("storage", onChange);
-    window.removeEventListener(EVENT, onChange);
+    window.removeEventListener(BRIEF_COLLAPSED_EVENT, onChange);
   };
 }
 
@@ -32,11 +30,11 @@ export function BriefFrame({ title, summary, children }: { title: ReactNode; sum
 
   const toggle = () => {
     try {
-      localStorage.setItem(KEY, collapsed ? "0" : "1");
+      localStorage.setItem(STORAGE_KEYS.briefCollapsed, collapsed ? "0" : "1");
     } catch {
       // Blocked storage: nothing to remember it in.
     }
-    window.dispatchEvent(new Event(EVENT));
+    window.dispatchEvent(new Event(BRIEF_COLLAPSED_EVENT));
   };
 
   return (

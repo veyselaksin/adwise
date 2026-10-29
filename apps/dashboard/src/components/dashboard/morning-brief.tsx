@@ -3,7 +3,7 @@ import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { getBrief } from "@/lib/api";
 import { formatDay, formatRange } from "@/lib/format";
-import type { BriefItem } from "@/lib/types";
+import type { BriefItem } from "@/types/brief.type";
 import { cn } from "@/lib/utils";
 import { BriefFrame } from "./brief-frame";
 

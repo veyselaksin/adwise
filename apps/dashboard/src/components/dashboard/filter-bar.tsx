@@ -4,9 +4,10 @@ import { CalendarIcon, Loader2Icon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { CHANNELS, COUNTRIES, type DashboardFilters, PRESET_LABELS } from "@/lib/filters";
+import { CHANNELS, COUNTRIES, PRESET_LABELS } from "@/constants/filters.constant";
+import type { DateRange, RangePreset } from "@/types/dates.type";
+import type { DashboardFilters } from "@/types/filters.type";
 import { formatRange } from "@/lib/format";
-import type { DateRange, RangePreset } from "@/lib/types";
 import { useFilterNavigation } from "./use-filter-navigation";
 
 type Props = {

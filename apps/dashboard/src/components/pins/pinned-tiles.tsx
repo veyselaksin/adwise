@@ -3,14 +3,12 @@ import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ApiError, getPinResult, getPins } from "@/lib/api";
 import { formatDay, formatMetric, formatRange } from "@/lib/format";
-import { change, type MetricDefs } from "@/lib/metrics";
-import type { MetricKey, MetricRow, PinResult } from "@/lib/types";
+import { PIN_DEFAULT_METRICS, PIN_MAX_COLUMNS } from "@/constants/pins.constant";
+import type { MetricDefs, MetricKey, MetricRow } from "@/types/metrics.type";
+import type { PinResult } from "@/types/pins.type";
+import { change } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
 import { UnpinButton } from "./unpin-button";
-
-/** When a pinned call asked for every metric, a tile shows these. */
-const DEFAULT_METRICS: MetricKey[] = ["spend", "subscriptions", "cac", "cost_per_trial"];
-const MAX_COLUMNS = 4;
 
 /**
  * Agent answers pinned from the agent panel. Each tile re-runs the agent's own
@@ -70,8 +68,8 @@ export async function PinnedTiles({ defs }: { defs: MetricDefs }) {
 
 function TileBody({ tile, defs }: { tile: PinResult; defs: MetricDefs }) {
   const { result } = tile;
-  const asked = tile.metrics.length === Object.keys(defs).length ? DEFAULT_METRICS : tile.metrics;
-  const metrics = asked.slice(0, MAX_COLUMNS);
+  const asked = tile.metrics.length === Object.keys(defs).length ? PIN_DEFAULT_METRICS : tile.metrics;
+  const metrics = asked.slice(0, PIN_MAX_COLUMNS);
 
   // No split: the totals, compared with the previous period when the call asked for it.
   if (result.groupBy.length === 0) {

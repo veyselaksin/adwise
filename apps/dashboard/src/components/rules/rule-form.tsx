@@ -2,14 +2,13 @@
 
 import { Loader2Icon, PlusIcon } from "lucide-react";
 import { useActionState, useRef } from "react";
-import { addRule, type RuleResult } from "@/app/rules/actions";
+import { addRule } from "@/app/rules/actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { MAX_RULE_CHARS } from "@/constants/rules.constant";
+import type { RuleResult } from "@/types/rules.type";
 
 const PLACEHOLDER = "e.g. When a question is about Brazil, also give money in BRL at 5.0 BRL per USD.";
-
-/** 500 matches the server's limit; it answers RULE_TOO_LONG past it. */
-const MAX_CHARS = 500;
 
 export function RuleForm() {
   const form = useRef<HTMLFormElement>(null);
@@ -28,7 +27,7 @@ export function RuleForm() {
         id="rule-text"
         name="text"
         required
-        maxLength={MAX_CHARS}
+        maxLength={MAX_RULE_CHARS}
         rows={2}
         placeholder={PLACEHOLDER}
         className="resize-none"

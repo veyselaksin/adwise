@@ -6,11 +6,10 @@ import { AppHeader } from "@/components/app-header";
 import { InvestigationWorkspace } from "@/components/investigation/investigation-workspace";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCatalog, getEntities } from "@/lib/api";
+import { DATE_PATTERN } from "@/constants/dates.constant";
 import { addDays } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Investigate · ADWISE" };
-
-const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 export default function InvestigatePage({ searchParams }: PageProps<"/investigate">) {
   return (
@@ -37,7 +36,7 @@ async function Investigate({ searchParams }: Pick<PageProps<"/investigate">, "se
   const to = one("to");
   // Default: the last 7 days against the 7 before them.
   const range =
-    from && to && DATE.test(from) && DATE.test(to)
+    from && to && DATE_PATTERN.test(from) && DATE_PATTERN.test(to)
       ? { from, to }
       : { from: addDays(catalog.lastDataDate, -6), to: catalog.lastDataDate };
   // `back` is the overview's query string; rebuilt so only search params get through.

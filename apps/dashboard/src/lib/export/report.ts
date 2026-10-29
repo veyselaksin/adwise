@@ -2,53 +2,14 @@
 // overview renders, so a file always matches what was on screen.
 
 import type { DashboardData } from "@/components/dashboard/load-dashboard";
-import { CHANNELS, COUNTRIES, type DashboardFilters, PRESET_LABELS } from "@/lib/filters";
+import { CHANNELS, COUNTRIES, PRESET_LABELS } from "@/constants/filters.constant";
+import { DETAIL_METRICS } from "@/constants/metrics.constant";
 import { formatDay, formatRange } from "@/lib/format";
 import { change, combineRows } from "@/lib/metrics";
-import type { MetricKey, MetricRow, PacingFields, Unit } from "@/lib/types";
-
-export type CellValue = string | number | null;
-
-export type ExportColumn = { key: string; label: string; unit: Unit | "text" };
-
-export type ExportRow = {
-  cells: Record<string, CellValue>;
-  /** Column keys whose value includes days that aren't final yet. */
-  notFinal?: string[];
-  /** Per-cell unit, for columns that mix units (the KPI table). */
-  units?: Record<string, Unit>;
-};
-
-export type ExportTable = {
-  id: string;
-  title: string;
-  description?: string;
-  columns: ExportColumn[];
-  rows: ExportRow[];
-};
-
-export type ExportReport = {
-  title: string;
-  generatedAt: string;
-  filters: { label: string; value: string }[];
-  notes: string[];
-  tables: ExportTable[];
-  /** Slug for file names, e.g. `adwise_2026-10-01_2026-10-14_meta`. */
-  fileName: string;
-};
-
-const DETAIL_METRICS: MetricKey[] = [
-  "spend",
-  "installs",
-  "trials",
-  "subscriptions",
-  "cpi",
-  "cost_per_trial",
-  "cac",
-  "trial_to_sub",
-  "d7_roas",
-  "ctr",
-];
+import type { PacingFields } from "@/types/budgets.type";
+import type { CellValue, ExportColumn, ExportReport, ExportRow, ExportTable } from "@/types/export.type";
+import type { DashboardFilters } from "@/types/filters.type";
+import type { MetricKey, MetricRow } from "@/types/metrics.type";
 
 const channelLabel = (value?: string) => CHANNELS.find((c) => c.value === value)?.label ?? value ?? "";
 const countryLabel = (value?: string) => COUNTRIES.find((c) => c.value === value)?.label ?? value ?? "";

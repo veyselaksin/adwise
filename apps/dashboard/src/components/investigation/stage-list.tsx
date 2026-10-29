@@ -1,7 +1,7 @@
 import { CheckIcon, CircleIcon, Loader2Icon, MinusIcon } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import type { Stage } from "./use-investigation";
+import type { InvestigationStage } from "@/types/investigation.type";
 
 const ICONS = {
   pending: CircleIcon,
@@ -11,7 +11,7 @@ const ICONS = {
 } as const;
 
 /** The investigation's steps as the server reports them. */
-export function StageList({ stages }: { stages: Stage[] }) {
+export function StageList({ stages }: { stages: InvestigationStage[] }) {
   return (
     <Card className="px-4 py-3">
       <ol className="grid gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2 lg:grid-cols-3" aria-label="Investigation progress">

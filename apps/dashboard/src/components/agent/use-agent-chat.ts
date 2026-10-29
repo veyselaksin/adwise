@@ -1,43 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { AgentEvent, AgentExport, ChatMessage } from "@/lib/types";
-
-export type AgentStep = {
-  id: string;
-  label: string;
-  status: "running" | "ok" | "failed";
-  summary?: string;
-  /** The call itself, so a `query_metrics` lookup can be pinned. Missing on turns saved before pins existed. */
-  tool?: string;
-  args?: Record<string, unknown>;
-};
-
-/** A file the agent made: a link to the dashboard's own export, so it matches the overview. */
-export type AgentDownload = { id: string; label: string; format: AgentExport["format"]; href: string };
-
-export type AgentTurn = {
-  id: string;
-  question: string;
-  steps: AgentStep[];
-  notes: string[];
-  downloads: AgentDownload[];
-  /** Text still being written; it becomes the answer, or a note if a lookup follows. */
-  draft: string;
-  answer?: string;
-  /** Suggested next questions, sent after the answer. */
-  followUps?: string[];
-  error?: { code: string; message: string };
-  usage?: { model: string; steps: number; tokens: number };
-  status: "streaming" | "done" | "stopped";
-};
-
-const STORAGE_KEY = "adwise.agent.turns";
+import { STORAGE_KEYS } from "@/constants/storage.constant";
+import type { AgentEvent, AgentExport, AgentTurn, ChatMessage } from "@/types/agent.type";
 
 /** Restores the last conversation in this browser; a convenience only, so failures are ignored. */
 function readStored(): AgentTurn[] {
   try {
-    const turns = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]") as AgentTurn[];
+    const turns = JSON.parse(localStorage.getItem(STORAGE_KEYS.agentTurns) ?? "[]") as AgentTurn[];
     // A reload mid-answer leaves a turn that will never finish.
     return turns.map((t) => ({ ...t, draft: t.draft ?? "", downloads: t.downloads ?? [], ...(t.status === "streaming" && { status: "stopped" }) }));
   } catch {
@@ -115,7 +85,7 @@ export function useAgentChat(model?: string) {
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(turns));
+      localStorage.setItem(STORAGE_KEYS.agentTurns, JSON.stringify(turns));
     } catch {
       // Storage full or blocked: the chat still works, it just won't survive a reload.
     }

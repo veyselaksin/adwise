@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { AgentModel, AgentModels } from "@/lib/types";
-
-const STORAGE_KEY = "adwise.agent.model";
+import { STORAGE_KEYS } from "@/constants/storage.constant";
+import type { AgentModel, AgentModels } from "@/types/agent.type";
 
 /**
  * The models the agent offers and the one this browser last picked. Until the
@@ -21,7 +20,7 @@ export function useAgentModels() {
         if (cancelled || !list) return;
         let saved: string | null = null;
         try {
-          saved = localStorage.getItem(STORAGE_KEY);
+          saved = localStorage.getItem(STORAGE_KEYS.agentModel);
         } catch {
           // Storage blocked: fall back to the default.
         }
@@ -37,7 +36,7 @@ export function useAgentModels() {
   const setModel = (id: string) => {
     setModelState(id);
     try {
-      localStorage.setItem(STORAGE_KEY, id);
+      localStorage.setItem(STORAGE_KEYS.agentModel, id);
     } catch {
       // Only a convenience.
     }
