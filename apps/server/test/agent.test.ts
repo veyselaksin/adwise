@@ -80,7 +80,7 @@ describe("agent context", () => {
   it("declares tools as plain JSON Schema functions", () => {
     assert.deepEqual(
       TOOL_DECLARATIONS.map((t) => t.function.name),
-      ["query_metrics", "list_entities", "get_budget_pacing", "get_releases", "export_report"],
+      ["query_metrics", "list_entities", "get_budget_pacing", "get_releases", "get_anomalies", "export_report"],
     );
     const params = TOOL_DECLARATIONS[0]!.function.parameters as { type: string; properties: Record<string, { type: string; items?: { type?: string; enum?: string[] } }> };
     assert.equal(params.type, "object");

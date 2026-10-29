@@ -5,6 +5,7 @@ import { BudgetsRepository } from "../database/repositories/budgets.repository.j
 import { EntitiesRepository } from "../database/repositories/entities.repository.js";
 import { MetricsRepository } from "../database/repositories/metrics.repository.js";
 import { AgentService } from "../services/agent.service.js";
+import { AnomaliesService } from "../services/anomalies.service.js";
 import { AuthService } from "../services/auth.service.js";
 import { BriefService } from "../services/brief.service.js";
 import { BudgetsService } from "../services/budgets.service.js";
@@ -24,6 +25,8 @@ export type Services = {
   entities: EntitiesService;
   budgets: BudgetsService;
   brief: BriefService;
+  /** The anomaly monitor: fixed rules over each campaign's daily numbers, no model. */
+  anomalies: AnomaliesService;
   releases: ReleasesService;
   rules: RulesService;
   pins: PinsService;
@@ -59,6 +62,7 @@ export default fp<ServicesOptions>(
     const pins = await PinsService.load(config.PINS_PATH, metrics);
     const entities = new EntitiesService(new EntitiesRepository(app.db));
     const budgets = new BudgetsService(new BudgetsRepository(app.db), metrics);
+    const anomalies = new AnomaliesService(metrics);
 
     const model = opts.model ?? (config.ZENMUX_API_KEY ? new ZenMuxClient({ apiKey: config.ZENMUX_API_KEY }) : null);
     if (!model) app.log.warn("ZENMUX_API_KEY is not set; the agent is disabled");
@@ -71,12 +75,13 @@ export default fp<ServicesOptions>(
       entities,
       budgets,
       brief: new BriefService(metrics, budgets, releases),
+      anomalies,
       releases,
       rules,
       pins,
-      agent: model && new AgentService(model, { metrics, entities, budgets, releases }, knowledge, rules, app.log),
+      agent: model && new AgentService(model, { metrics, entities, budgets, releases, anomalies }, knowledge, rules, app.log),
       investigation: new InvestigationService({ metrics, entities, releases, knowledge, rules, model, log: app.log }),
-      mcp: new McpService({ metrics, entities, budgets, releases }, knowledge, rules),
+      mcp: new McpService({ metrics, entities, budgets, releases, anomalies }, knowledge, rules),
     });
   },
   { name: "services", dependencies: ["config", "auth", "database"] },

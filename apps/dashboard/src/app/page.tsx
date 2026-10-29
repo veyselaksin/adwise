@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { AgentProvider } from "@components/agent/agent-provider";
 import { AgentToggle } from "@components/agent/agent-toggle";
+import { AnomalyOverview } from "@components/anomalies/anomaly-overview";
 import { AppHeader } from "@components/app-header";
 import { CountryTable } from "@components/dashboard/country-table";
 import { DrilldownTable } from "@components/dashboard/drilldown-table";
@@ -41,6 +42,9 @@ async function Dashboard({ searchParams }: Pick<PageProps<"/">, "searchParams">)
     <>
       <Suspense fallback={<Skeleton className="h-40 w-full rounded-xl" />}>
         <MorningBrief search={search} />
+      </Suspense>
+      <Suspense fallback={<Skeleton className="h-28 w-full rounded-xl" />}>
+        <AnomalyOverview />
       </Suspense>
       <div className="flex flex-col items-start gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>

@@ -55,7 +55,7 @@ describe("mcp", () => {
     const { tools } = (await result("tools/list")) as { tools: { name: string; annotations: { readOnlyHint: boolean } }[] };
     assert.deepEqual(
       tools.map((t) => t.name),
-      ["get_team_context", "query_metrics", "list_entities", "get_budget_pacing", "get_releases"],
+      ["get_team_context", "query_metrics", "list_entities", "get_budget_pacing", "get_releases", "get_anomalies"],
     );
     assert.ok(tools.every((t) => t.annotations.readOnlyHint));
   });

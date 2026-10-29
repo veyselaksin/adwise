@@ -1,6 +1,7 @@
 import Type, { type Static, type TObject } from "typebox";
 import Value from "typebox/value";
 import { AGENT_MAX_TOOL_ROWS } from "../constants/agent.constant.js";
+import { ANOMALY_TOOL_MAX_ROWS, ANOMALY_TYPES } from "../constants/anomalies.constant.js";
 import { DATE_PATTERN } from "../constants/dates.constant.js";
 import { EXPORT_DEFAULT_PRESET, EXPORT_FORMAT_LABELS, EXPORT_FORMATS, EXPORT_TABLES } from "../constants/export.constant.js";
 import { METRIC_KEYS, METRICS } from "../constants/metrics.constant.js";
@@ -11,6 +12,7 @@ import { literals } from "../schemas/common.schema.js";
 import { Dimension, MetricKey, RangePreset } from "../schemas/metrics.schema.js";
 import type { ExportRequest, ToolDeclaration } from "../types/agent.type.js";
 import type { DimensionFields, MetricKey as MetricKeyType, MetricRow, MetricsRequest } from "../types/metrics.type.js";
+import type { AnomaliesService } from "./anomalies.service.js";
 import type { BudgetsService } from "./budgets.service.js";
 import type { EntitiesService } from "./entities.service.js";
 import type { MetricsService } from "./metrics.service.js";
@@ -21,6 +23,7 @@ export type ToolDeps = {
   entities: EntitiesService;
   budgets: BudgetsService;
   releases: ReleasesService;
+  anomalies: AnomaliesService;
 };
 
 /**
@@ -260,6 +263,75 @@ const getReleases = tool({
   },
 });
 
+/* -------------------------------------------------------------- anomalies */
+
+const AnomaliesParams = Type.Object({
+  from: isoDate("First day to check, YYYY-MM-DD (with `to`; both omitted = the last 14 days)"),
+  to: isoDate("Last day to check, YYYY-MM-DD"),
+  channel: Type.Optional(literals(["meta", "tiktok"])),
+  country: Type.Optional(literals(["US", "GB", "DE", "BR"])),
+  type: Type.Optional(literals(ANOMALY_TYPES, { description: "Only this rule" })),
+  campaign_id: Type.Optional(Type.String({ description: "Only this campaign's anomalies" })),
+  date: isoDate("Only anomalies on this day"),
+});
+
+const getAnomalies = tool({
+  name: "get_anomalies",
+  description: [
+    "The anomaly monitor's flags, exactly as the dashboard shows them: days on which a campaign's spend, CAC, D7 ROAS, CTR, CPC or conversions moved unusually far from the median of its own comparable days before (fixed rules, robust z-score, volume floors, team maturity).",
+    "Each item has the observed and baseline values, the change, the score, the rule that fired, a caveat when it is capped at low, and the metric's definition.",
+    "Quote these figures instead of recomputing them. An anomaly is a signal to investigate, not a cause: check it with query_metrics (e.g. the campaign by ad set or by date) and get_releases before suggesting why.",
+    "Ratios (observed, baseline for ctr/d7_roas) are percentages rounded to one decimal; pct_change is a percentage.",
+  ].join(" "),
+  params: AnomaliesParams,
+  label: (a) =>
+    [
+      `Anomalies${a.type ? ` · ${a.type.replaceAll("_", " ")}` : ""}`,
+      a.campaign_id,
+      a.channel,
+      a.country,
+      a.date ?? (a.from && a.to ? `${a.from} → ${a.to}` : "last 14 days"),
+    ]
+      .filter(Boolean)
+      .join(" · "),
+  run: async (a, { anomalies }) => {
+    // A single day is still checked over its own baseline, so `date` narrows the range itself.
+    const range = a.date ? { from: a.date, to: a.date } : { from: a.from, to: a.to };
+    const report = await anomalies.report({ ...range, channel: a.channel, country: a.country, type: a.type });
+    const items = report.anomalies.filter((x) => !a.campaign_id || x.campaign.id === a.campaign_id);
+    const ratio = (unit: string, v: number) => (unit === "ratio" ? Math.round(v * 1000) / 10 : unit === "usd" ? roundCents(v) : v);
+    const rows = items.slice(0, ANOMALY_TOOL_MAX_ROWS).map((x) => ({
+      id: x.id,
+      severity: x.severity,
+      type: x.type,
+      campaign: `${x.campaign.name} (${x.campaign.id}, ${x.campaign.channel} ${x.campaign.country})`,
+      date: x.date,
+      metric: x.metricLabel,
+      definition: x.definition,
+      observed: ratio(x.unit, x.observed),
+      baseline: ratio(x.unit, x.baseline),
+      pct_change: x.pctChange === null ? null : Math.round(x.pctChange * 1000) / 10,
+      robust_z: x.score,
+      baseline_days: `${x.baselineWindow.days} ${x.dayType}s, ${x.baselineWindow.from} → ${x.baselineWindow.to}`,
+      volume: x.volume,
+      rule: x.rule,
+      ...(x.caveat && { caveat: x.caveat }),
+      ...(x.spend && { spend: { ...x.spend, pctChange: x.spend.pctChange === null ? null : Math.round(x.spend.pctChange * 1000) / 10 } }),
+    }));
+    return {
+      ok: true,
+      summary: `${items.length} anomal${items.length === 1 ? "y" : "ies"} · ${report.summary.bySeverity.high} high`,
+      data: {
+        range: report.range,
+        anomalies: rows,
+        ...(items.length > rows.length && { rows_omitted: items.length - rows.length }),
+        final_through: report.finalThrough,
+        checks_skipped: report.coverage.skipped,
+      },
+    };
+  },
+});
+
 /* ----------------------------------------------------------------- export */
 
 const ExportReportParams = Type.Object({
@@ -326,7 +398,7 @@ const exportReport = tool({
 /* ------------------------------------------------------------------ index */
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- each entry keeps its own params type
-const TOOLS: Tool<any>[] = [queryMetrics, listEntities, budgetPacing, getReleases, exportReport];
+const TOOLS: Tool<any>[] = [queryMetrics, listEntities, budgetPacing, getReleases, getAnomalies, exportReport];
 
 export const TOOL_DECLARATIONS: ToolDeclaration[] = TOOLS.map((t) => ({
   type: "function",

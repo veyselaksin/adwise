@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE } from "@constants/auth";
 import type { AgentModels, ChatMessage } from "@typings/agent";
+import type { AnomalyQuery, AnomalyReport } from "@typings/anomalies";
 import type { Brief } from "@typings/brief";
 import type { BudgetPacing } from "@typings/budgets";
 import type { Entities } from "@typings/entities";
@@ -95,6 +96,12 @@ export const getReleases = (range: { from: string; to: string }) =>
 
 /** What changed yesterday, from the server's fixed checks; ignores the overview's filters. */
 export const getBrief = () => authed<Brief>("/brief");
+
+/** Campaign days that moved unusually far from their own baseline; fixed rules on the server, no model. */
+export function getAnomalies(query: AnomalyQuery = {}) {
+  const params = new URLSearchParams(Object.entries(query).filter((e): e is [string, string] => !!e[1]));
+  return authed<AnomalyReport>(`/anomalies${params.size ? `?${params}` : ""}`);
+}
 
 export const getPins = () => authed<Pin[]>("/pins");
 

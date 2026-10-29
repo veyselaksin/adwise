@@ -4,7 +4,15 @@ import { createContext, type ReactNode, use, useState } from "react";
 import { cn } from "@lib/utils";
 import { AgentPanel } from "./agent-panel";
 
-type AgentState = { open: boolean; setOpen: (open: boolean) => void };
+type AgentState = {
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  /** Opens the panel and asks `question`, once the agent is free. */
+  askAgent: (question: string) => void;
+};
+
+/** A question handed in from elsewhere on the page; `id` makes asking the same text twice a new request. */
+export type QueuedQuestion = { id: number; text: string };
 
 const AgentContext = createContext<AgentState | null>(null);
 
@@ -22,17 +30,24 @@ export function useAgent(): AgentState {
 export function AgentProvider({ children }: { children: ReactNode }) {
   const [open, setOpenState] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [queued, setQueued] = useState<QueuedQuestion | null>(null);
   const setOpen = (next: boolean) => {
     if (next) setMounted(true);
     setOpenState(next);
   };
+  const askAgent = (text: string) => {
+    setOpen(true);
+    setQueued((q) => ({ id: (q?.id ?? 0) + 1, text }));
+  };
 
   return (
-    <AgentContext value={{ open, setOpen }}>
+    <AgentContext value={{ open, setOpen, askAgent }}>
       <div className={cn("flex flex-1 flex-col transition-[padding] duration-200", open && "lg:pr-[26rem]")}>
         {children}
       </div>
-      {mounted && <AgentPanel open={open} onClose={() => setOpen(false)} />}
+      {mounted && (
+        <AgentPanel open={open} onClose={() => setOpen(false)} queued={queued} onQueuedTaken={() => setQueued(null)} />
+      )}
     </AgentContext>
   );
 }

@@ -41,6 +41,11 @@ export default fp(
               "Ad performance from the warehouse, read-only. The dashboard and the agent use these same definitions.",
           },
           {
+            name: "anomalies",
+            description:
+              "Campaign days that moved unusually far from the campaign's own baseline, from fixed rules (no model). Signals to investigate, not causes.",
+          },
+          {
             name: "budgets",
             description: "Ad set spend against daily budgets over a recent window, read-only.",
           },

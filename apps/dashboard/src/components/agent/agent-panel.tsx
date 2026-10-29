@@ -24,6 +24,7 @@ import { cn } from "@lib/utils";
 import { AgentMarkdown } from "./agent-markdown";
 import { CopyButton } from "./copy-button";
 import { PinButton } from "./pin-button";
+import type { QueuedQuestion } from "./agent-provider";
 import { useAgentChat } from "./use-agent-chat";
 import { useAgentModels } from "./use-agent-models";
 import { useSmoothText } from "./use-smooth-text";
@@ -39,7 +40,15 @@ const SUGGESTIONS = [
   "Did the iOS 3.46.0 release change trial → sub?",
 ];
 
-export function AgentPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
+type PanelProps = {
+  open: boolean;
+  onClose: () => void;
+  /** A question asked from elsewhere on the page (e.g. an anomaly's "Ask ADWISE"). */
+  queued?: QueuedQuestion | null;
+  onQueuedTaken?: () => void;
+};
+
+export function AgentPanel({ open, onClose, queued, onQueuedTaken }: PanelProps) {
   const { models, model, setModel } = useAgentModels();
   const { turns, busy, ask, stop, reset, retry } = useAgentChat(model);
   const labels = Object.fromEntries(models.map((m) => [m.id, m.label]));
@@ -78,6 +87,13 @@ export function AgentPanel({ open, onClose }: { open: boolean; onClose: () => vo
   useEffect(() => {
     if (open) inputRef.current?.focus();
   }, [open]);
+
+  // Asked from outside the panel: wait until the current answer finishes, then ask it once.
+  useEffect(() => {
+    if (!queued || busy) return;
+    onQueuedTaken?.();
+    void ask(queued.text);
+  }, [queued, busy, ask, onQueuedTaken]);
 
   const submit = (question = draft) => {
     if (!question.trim() || busy) return;
