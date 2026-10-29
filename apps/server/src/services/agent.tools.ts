@@ -30,7 +30,14 @@ export type ToolDeps = {
  * What a tool hands back: `data` goes to the model, `summary` to the user's step
  * list, and `export` (export_report only) to the dashboard as a download.
  */
-export type ToolOutput = { ok: boolean; summary: string; data: Record<string, unknown>; export?: ExportRequest };
+export type ToolOutput = {
+  ok: boolean;
+  summary: string;
+  data: Record<string, unknown>;
+  export?: ExportRequest;
+  /** Why it failed, as a stable code (an AppError's code, INVALID_ARGUMENTS, UNKNOWN_TOOL); for telemetry. */
+  code?: string;
+};
 
 type Tool<S extends TObject> = {
   name: string;
@@ -417,15 +424,15 @@ export const MCP_TOOL_DECLARATIONS = TOOL_DECLARATIONS.filter(
 /** Validates the model's arguments and runs the tool. Bad input comes back as an error the model can fix. */
 export async function runTool(name: string, args: Record<string, unknown>, deps: ToolDeps): Promise<ToolOutput> {
   const t = TOOLS.find((x) => x.name === name);
-  if (!t) return { ok: false, summary: "Unknown tool", data: { error: `No tool named ${name}` } };
+  if (!t) return { ok: false, code: "UNKNOWN_TOOL", summary: "Unknown tool", data: { error: `No tool named ${name}` } };
   if (!Value.Check(t.params, args)) {
     const problems = [...Value.Errors(t.params, args)].slice(0, 3).map((e) => `${e.instancePath || "args"}: ${e.message}`);
-    return { ok: false, summary: "Invalid arguments", data: { error: problems.join("; ") } };
+    return { ok: false, code: "INVALID_ARGUMENTS", summary: "Invalid arguments", data: { error: problems.join("; ") } };
   }
   try {
     return await t.run(args, deps);
   } catch (err) {
-    if (err instanceof AppError) return { ok: false, summary: err.message, data: { error: err.message } };
+    if (err instanceof AppError) return { ok: false, code: err.code, summary: err.message, data: { error: err.message } };
     throw err;
   }
 }

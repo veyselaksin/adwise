@@ -38,6 +38,7 @@ import type { KnowledgeService } from "./knowledge.service.js";
 import type { MetricsService } from "./metrics.service.js";
 import type { ReleasesService } from "./releases.service.js";
 import type { RulesService } from "./rules.service.js";
+import { classifyRunError, emptyUsage, modelSpanError, type RunOutcome, type RunTrace, type TelemetryService } from "./telemetry.service.js";
 
 export type InvestigationDeps = {
   metrics: MetricsService;
@@ -48,6 +49,8 @@ export type InvestigationDeps = {
   /** null when ZENMUX_API_KEY isn't set: the report then has facts only. */
   model: ModelClient | null;
   log: Pick<FastifyBaseLogger, "warn" | "error">;
+  /** Records each investigation that can call the model as a run, like the agent's. */
+  telemetry?: TelemetryService;
 };
 
 /** A checked request: the campaign exists and both periods lie inside the data. */
@@ -97,12 +100,33 @@ export class InvestigationService {
     return { campaign, range, previous };
   }
 
-  async *run(input: ValidInvestigation, opts: { model: AgentModelId; signal?: AbortSignal }): AsyncGenerator<InvestigationEvent> {
+  async *run(
+    input: ValidInvestigation,
+    opts: { model: AgentModelId; signal?: AbortSignal; requestId?: string },
+  ): AsyncGenerator<InvestigationEvent> {
+    // Without a model there is no AI execution to observe, so nothing is recorded.
+    const run = this.deps.model ? this.deps.telemetry?.startRun({ kind: "investigation", provider: "zenmux", model: opts.model, requestId: opts.requestId }) : undefined;
+    let outcome: RunOutcome | null = null;
+    try {
+      yield* this.steps(input, opts, run, (o) => (outcome = o));
+    } finally {
+      run?.finish(outcome ?? { status: "cancelled", errorCategory: "CANCELLED", errorMessage: "The client closed the request." });
+    }
+  }
+
+  private async *steps(
+    input: ValidInvestigation,
+    opts: { model: AgentModelId; signal?: AbortSignal },
+    run: RunTrace | undefined,
+    settle: (outcome: RunOutcome) => void,
+  ): AsyncGenerator<InvestigationEvent> {
     const usage: ModelUsage = { inputTokens: 0, outputTokens: 0 };
     let calledModel = false;
+    const ids = run?.ids ?? {};
 
     yield* stage("validate", "done");
     let facts: InvestigationFacts;
+    const factsSpan = run?.startSpan("stage", "Compute facts", { metadata: { days: daysBetween(input.range.from, input.range.to) + 1 } });
     try {
       const steps = this.facts(input);
       let next = await steps.next();
@@ -111,8 +135,12 @@ export class InvestigationService {
         next = await steps.next();
       }
       facts = next.value;
+      factsSpan?.end({ status: "ok", metadata: { status: facts.status } });
     } catch (err) {
-      this.deps.log.error({ err, campaign: input.campaign.id }, "Investigation facts failed");
+      const outcome = classifyRunError(err, opts.signal);
+      factsSpan?.end({ status: "error", errorCategory: "FACTS_FAILED", errorMessage: outcome.errorMessage });
+      settle({ status: "failure", errorCategory: "FACTS_FAILED", errorMessage: outcome.errorMessage });
+      this.deps.log.error({ component: "investigation", ...ids, err, campaign: input.campaign.id }, "Investigation facts failed");
       yield { type: "error", code: "FACTS_FAILED", message: "The campaign's data couldn't be loaded. Try again." };
       yield { type: "done", model: null, usage };
       return;
@@ -120,6 +148,8 @@ export class InvestigationService {
     yield { type: "facts", facts };
 
     if (facts.status === "insufficient") {
+      // The facts are the whole answer; there is nothing for the model to interpret.
+      settle({ status: "success" });
       yield* stage("interpret", "skipped");
     } else if (!this.deps.model) {
       yield* stage("interpret", "skipped");
@@ -128,19 +158,25 @@ export class InvestigationService {
       yield* stage("interpret", "running");
       calledModel = true;
       try {
-        const interpretation = await this.interpret(facts, opts, usage);
+        const interpretation = await this.interpret(facts, opts, usage, run);
         yield* stage("interpret", "done");
         yield { type: "interpretation", interpretation };
+        settle({ status: "success" });
       } catch (err) {
+        settle(
+          err instanceof MalformedResponse
+            ? { status: "failure", errorCategory: "MALFORMED_RESPONSE", errorMessage: err.message }
+            : classifyRunError(err, opts.signal),
+        );
         if (opts.signal?.aborted) return;
         if (err instanceof ModelError) {
-          this.deps.log.warn({ model: opts.model, code: err.code, detail: err.detail }, "Investigation model call failed");
+          this.deps.log.warn({ component: "investigation", ...ids, model: opts.model, code: err.code, detail: err.detail }, "Investigation model call failed");
           yield { type: "error", code: err.code, message: err.message, ...(err.retryAfterSeconds && { retryAfterSeconds: err.retryAfterSeconds }) };
         } else if (err instanceof MalformedResponse) {
-          this.deps.log.warn({ model: opts.model, error: err.message }, "Investigation model reply malformed");
+          this.deps.log.warn({ component: "investigation", ...ids, model: opts.model, error: err.message }, "Investigation model reply malformed");
           yield { type: "error", code: "MALFORMED_RESPONSE", message: "The model's interpretation couldn't be read. The figures above are complete; try again or pick another model." };
         } else {
-          this.deps.log.error({ err, model: opts.model }, "Investigation interpretation failed");
+          this.deps.log.error({ component: "investigation", ...ids, err, model: opts.model }, "Investigation interpretation failed");
           yield { type: "error", code: "AGENT_FAILED", message: "Something went wrong while interpreting. The figures above are complete." };
         }
       }
@@ -219,21 +255,41 @@ export class InvestigationService {
   }
 
   /** One model call (two if the first reply is malformed), then the guardrails. */
-  private async interpret(facts: InvestigationFacts, opts: { model: AgentModelId; signal?: AbortSignal }, usage: ModelUsage): Promise<Interpretation> {
+  private async interpret(
+    facts: InvestigationFacts,
+    opts: { model: AgentModelId; signal?: AbortSignal },
+    usage: ModelUsage,
+    run?: RunTrace,
+  ): Promise<Interpretation> {
     const { metrics, knowledge, rules } = this.deps;
     const system = buildInvestigationPrompt(metrics.today, knowledge, rules.active());
     const messages: ModelMessage[] = [{ role: "user", content: factsMessage(facts) }];
 
     let problem = "";
     for (let attempt = 1; attempt <= INTERPRETATION_ATTEMPTS; attempt++) {
-      const stream = this.deps.model!.stream({ model: opts.model, system, messages, tools: [], allowTools: false, signal: opts.signal });
-      let next = await stream.next();
-      while (!next.done) next = await stream.next();
+      const span = run?.startSpan("model", attempt === 1 ? "Interpret facts" : `Interpret facts (retry ${attempt - 1})`, {
+        model: opts.model,
+        metadata: { attempt },
+      });
+      let next;
+      try {
+        const stream = this.deps.model!.stream({ model: opts.model, system, messages, tools: [], allowTools: false, signal: opts.signal });
+        next = await stream.next();
+        while (!next.done) next = await stream.next();
+      } catch (err) {
+        span?.end(modelSpanError(err, opts.signal));
+        throw err;
+      }
       const { message, usage: used } = next.value;
       usage.inputTokens += used.inputTokens;
       usage.outputTokens += used.outputTokens;
 
       const parsed = parseInterpretation(message.content ?? "");
+      span?.end({
+        status: "ok",
+        usage: next.value.telemetry ?? emptyUsage({ inputTokens: used.inputTokens, outputTokens: used.outputTokens }),
+        metadata: { parsed: parsed.ok },
+      });
       if (parsed.ok) return sanitizeInterpretation(parsed.value, facts);
       problem = parsed.error;
       messages.push(

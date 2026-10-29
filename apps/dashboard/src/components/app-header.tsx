@@ -13,6 +13,7 @@ const PAGES = [
   { href: "/investigate", label: "Investigate" },
   { href: "/insights", label: "Insights" },
   { href: "/rules", label: "Rules" },
+  { href: "/observability", label: "Observability" },
 ] as const;
 
 type Page = (typeof PAGES)[number]["href"];

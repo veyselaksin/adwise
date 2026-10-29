@@ -16,7 +16,7 @@ export const investigationController = ({ investigation }: Services, defaultMode
       if (!reply.raw.writableFinished) abort.abort();
     });
     async function* lines() {
-      for await (const event of investigation.run(input, { model: body.model ?? defaultModel, signal: abort.signal })) {
+      for await (const event of investigation.run(input, { model: body.model ?? defaultModel, signal: abort.signal, requestId: reply.request.id })) {
         yield `${JSON.stringify(event)}\n`;
       }
     }

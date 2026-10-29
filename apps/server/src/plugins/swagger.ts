@@ -34,6 +34,11 @@ export default fp(
         servers: [{ url: "/", description: "Current host" }],
         tags: [
           { name: "health", description: "Liveness and version checks" },
+          {
+            name: "observability",
+            description:
+              "The server's own telemetry: agent and investigation runs with their model and tool spans, persisted warn/error logs, and this process's runtime. Never case data, prompts or answers.",
+          },
           { name: "auth", description: "Sign in to get the JWT the data endpoints require" },
           {
             name: "metrics",

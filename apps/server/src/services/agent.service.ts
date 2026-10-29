@@ -10,6 +10,7 @@ import { buildSystemPrompt } from "./agent.prompt.js";
 import { runTool, TOOL_DECLARATIONS, toolLabel, type ToolDeps, type ToolOutput } from "./agent.tools.js";
 import type { KnowledgeService } from "./knowledge.service.js";
 import type { RulesService } from "./rules.service.js";
+import { classifyRunError, emptyUsage, modelSpanError, type RunOutcome, type TelemetryService, toolSpanResult } from "./telemetry.service.js";
 
 /**
  * Answers a question with a short tool loop: the model asks for data, the
@@ -25,6 +26,7 @@ export class AgentService {
     private readonly rules: RulesService,
     private readonly log: Pick<FastifyBaseLogger, "warn" | "error">,
     private readonly snapshots: SnapshotSigner,
+    private readonly telemetry: TelemetryService,
   ) {}
 
   /** Throws before anything is streamed, so bad input still gets a normal 400. */
@@ -37,8 +39,11 @@ export class AgentService {
     }
   }
 
-  async *chat(messages: ChatMessage[], opts: { model: AgentModelId; signal?: AbortSignal }): AsyncGenerator<AgentEvent> {
+  async *chat(messages: ChatMessage[], opts: { model: AgentModelId; signal?: AbortSignal; requestId?: string }): AsyncGenerator<AgentEvent> {
     const { model, signal } = opts;
+    // Telemetry: one run per question, closed in `finally` however the stream ends.
+    const run = this.telemetry.startRun({ kind: "agent", provider: "zenmux", model, requestId: opts.requestId });
+    let outcome: RunOutcome | null = null;
     const history = toMessages(messages);
     // Built per question, so a rule added on the Rules page applies from the next question.
     const system = buildSystemPrompt(this.deps.metrics.catalog(), this.knowledge, this.rules.active());
@@ -51,23 +56,38 @@ export class AgentService {
     try {
       while (steps < AGENT_MAX_STEPS) {
         steps++;
-        // The last step may not call tools, so every question ends in an answer.
-        const stream = this.model.stream({
-          model,
-          system,
-          messages: history,
-          tools: TOOL_DECLARATIONS,
-          allowTools: steps < AGENT_MAX_STEPS,
-          signal,
-        });
-        // Text streams as it's written; whether it was the answer or a remark
-        // before a lookup is only known at the end of the step (`answer` or `note`).
-        let next = await stream.next();
-        while (!next.done) {
-          yield { type: "text_delta", text: next.value };
+        const span = run.startSpan("model", `Model call ${steps}`, { model, metadata: { step: steps, toolsAllowed: steps < AGENT_MAX_STEPS } });
+        let next;
+        try {
+          // The last step may not call tools, so every question ends in an answer.
+          const stream = this.model.stream({
+            model,
+            system,
+            messages: history,
+            tools: TOOL_DECLARATIONS,
+            allowTools: steps < AGENT_MAX_STEPS,
+            signal,
+          });
+          // Text streams as it's written; whether it was the answer or a remark
+          // before a lookup is only known at the end of the step (`answer` or `note`).
           next = await stream.next();
+          while (!next.done) {
+            yield { type: "text_delta", text: next.value };
+            next = await stream.next();
+          }
+        } catch (err) {
+          span.end(modelSpanError(err, signal));
+          throw err;
+        } finally {
+          // The stream didn't finish and nothing threw: the client stopped reading mid-stream.
+          if (!next?.done) span.end({ status: "cancelled", errorCategory: "CANCELLED" });
         }
         const { message, usage: used } = next.value;
+        span.end({
+          status: "ok",
+          usage: next.value.telemetry ?? reportedUsage(used),
+          metadata: { toolCallsRequested: message.tool_calls?.length ?? 0 },
+        });
         usage.inputTokens += used.inputTokens;
         usage.outputTokens += used.outputTokens;
         history.push(message);
@@ -80,6 +100,7 @@ export class AgentService {
           yield { type: "answer", text: answer };
           if (followUps.length > 0) yield { type: "follow_ups", questions: followUps };
           yield { type: "snapshot", token: this.snapshots.sign(this.snapshot(messages, answer, notes, evidence, model)) };
+          outcome = { status: "success" };
           break;
         }
         if (text) {
@@ -94,30 +115,54 @@ export class AgentService {
           yield { type: "tool_call", id: ids[i]!, tool: call.function.name, label: toolLabel(call.function.name, args[i] ?? {}), args: args[i] ?? {} };
         }
         const outputs: ToolOutput[] = await Promise.all(
-          calls.map((call, i) =>
-            args[i]
-              ? runTool(call.function.name, args[i], this.deps)
-              : { ok: false, summary: "Invalid arguments", data: { error: "Arguments must be a JSON object" } },
-          ),
+          calls.map(async (call, i) => {
+            const name = call.function.name;
+            const span = run.startSpan("tool", name, {
+              tool: name,
+              // The step-list label and argument names describe the lookup; results never go to telemetry.
+              metadata: { step: steps, label: toolLabel(name, args[i] ?? {}), argKeys: Object.keys(args[i] ?? {}) },
+            });
+            try {
+              const out: ToolOutput = args[i]
+                ? await runTool(name, args[i], this.deps)
+                : { ok: false, code: "INVALID_ARGUMENTS", summary: "Invalid arguments", data: { error: "Arguments must be a JSON object" } };
+              span.end(toolSpanResult(out));
+              return out;
+            } catch (err) {
+              span.end({ status: "error", errorCategory: "TOOL_EXCEPTION", errorMessage: err instanceof Error ? `${err.name}: ${err.message}` : String(err) });
+              throw err;
+            }
+          }),
         );
         for (const [i, call] of calls.entries()) {
           const out = outputs[i]!;
-          if (!out.ok) this.log.warn({ tool: call.function.name, args: call.function.arguments, error: out.data.error }, "Agent tool call failed");
+          if (!out.ok) {
+            this.log.warn(
+              { component: "agent", ...run.ids, tool: call.function.name, errorCategory: out.code, argKeys: Object.keys(args[i] ?? {}), error: out.data.error },
+              "Agent tool call failed",
+            );
+          }
           yield { type: "tool_result", id: ids[i]!, ok: out.ok, summary: out.summary };
           evidence.push(evidenceOf(ids[i]!, call.function.name, args[i] ?? {}, out));
           if (out.export) yield { type: "export", id: ids[i]!, label: toolLabel(call.function.name, args[i] ?? {}), ...out.export };
           history.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(out.data) });
         }
       }
+      // Only reachable if the forced last step still returned tool calls.
+      outcome ??= { status: "failure", errorCategory: "NO_ANSWER", errorMessage: `No answer after ${steps} model calls` };
     } catch (err) {
+      outcome = classifyRunError(err, signal);
       if (signal?.aborted) return;
       if (err instanceof ModelError) {
-        this.log.warn({ model, code: err.code, detail: err.detail }, "Agent model call failed");
+        this.log.warn({ component: "agent", ...run.ids, model, code: err.code, detail: err.detail }, "Agent model call failed");
         yield { type: "error", code: err.code, message: err.message, ...(err.retryAfterSeconds && { retryAfterSeconds: err.retryAfterSeconds }) };
       } else {
-        this.log.error({ err, model }, "Agent failed");
+        this.log.error({ component: "agent", ...run.ids, err, model }, "Agent failed");
         yield { type: "error", code: "AGENT_FAILED", message: "Something went wrong while answering. Try again." };
       }
+    } finally {
+      // No outcome here means the client stopped reading before the run ended.
+      run.finish(outcome ?? { status: "cancelled", errorCategory: "CANCELLED", errorMessage: "The client closed the request." });
     }
     yield { type: "done", model, steps, usage };
   }
@@ -137,6 +182,9 @@ export class AgentService {
     };
   }
 }
+
+/** Usage from a client that has no telemetry of its own: its counts are taken as reported. */
+const reportedUsage = (used: ModelUsage) => emptyUsage({ inputTokens: used.inputTokens, outputTokens: used.outputTokens });
 
 /** A lookup as the model read it; a very large output keeps only its summary. */
 function evidenceOf(id: string, tool: string, args: Record<string, unknown>, out: ToolOutput): Evidence {

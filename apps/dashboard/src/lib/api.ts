@@ -11,6 +11,18 @@ import type { Health } from "@typings/health";
 import type { Insight, InsightDraft, InsightQuery, InsightSummary } from "@typings/insights";
 import type { InvestigationRequest } from "@typings/investigation";
 import type { Catalog, MetricsQuery, MetricsResult } from "@typings/metrics";
+import type {
+  LogPage,
+  LogQuery,
+  ObservabilityRange,
+  ObservabilitySummary,
+  ObservabilityTimeseries,
+  RunDetail,
+  RunKind,
+  RunList,
+  RunQuery,
+  RuntimeSnapshot,
+} from "@typings/observability";
 import type { Pin, PinResult } from "@typings/pins";
 import type { Release } from "@typings/releases";
 import type { Rule } from "@typings/rules";
@@ -178,3 +190,24 @@ async function streamFrom(path: string, body: unknown, signal: AbortSignal): Pro
     throw new ApiError("API_UNREACHABLE", "The API is not reachable. Try again in a moment.");
   }
 }
+
+/** Query string from defined values only. */
+const queryOf = (query: Record<string, string | number | boolean | undefined>) =>
+  new URLSearchParams(Object.entries(query).filter((e): e is [string, string | number | boolean] => e[1] !== undefined && e[1] !== "").map(([k, v]) => [k, String(v)]));
+
+/** Agent run KPIs over a window ending now (the server's own telemetry, not case data). */
+export const getObservabilitySummary = (range: ObservabilityRange, kind?: RunKind) =>
+  authed<ObservabilitySummary>(`/observability/summary?${queryOf({ range, kind })}`);
+
+export const getObservabilityTimeseries = (range: ObservabilityRange, kind?: RunKind) =>
+  authed<ObservabilityTimeseries>(`/observability/timeseries?${queryOf({ range, kind })}`);
+
+export const getRuns = (query: RunQuery) => authed<RunList>(`/observability/runs?${queryOf(query)}`);
+
+/** One run's trace, by run id or trace id. */
+export const getRun = (id: string) => authed<RunDetail>(`/observability/runs/${encodeURIComponent(id)}`);
+
+export const getLogs = (query: LogQuery) => authed<LogPage>(`/observability/logs?${queryOf(query)}`);
+
+/** This server process's memory, CPU and dependency checks, measured now. */
+export const getRuntime = () => authed<RuntimeSnapshot>("/observability/runtime");

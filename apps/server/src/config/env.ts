@@ -32,6 +32,13 @@ const EnvSchema = Type.Object({
   PINS_PATH: Type.String({ minLength: 1, default: "data/pinned-tiles.json" }),
   /** Where agent answers saved as insights are kept (a JSON file the server writes). */
   INSIGHTS_PATH: Type.String({ minLength: 1, default: "data/insights.json" }),
+  /**
+   * The server's own telemetry (agent runs, spans, persisted logs): a SQLite file it creates and writes,
+   * separate from the read-only case data. Use a persistent volume in production.
+   */
+  TELEMETRY_PATH: Type.String({ minLength: 1, default: "data/telemetry.db" }),
+  /** Days of runs, spans and logs kept; older ones are deleted at boot and hourly. */
+  TELEMETRY_RETENTION_DAYS: Type.Integer({ minimum: 1, maximum: 365, default: 30 }),
   /** ZenMux API key for the agent's models. Empty disables the agent (its route answers 503 AGENT_DISABLED). */
   ZENMUX_API_KEY: Type.String({ default: "" }),
   /** The model that answers when the dashboard doesn't pick one; one of AGENT_MODELS. */

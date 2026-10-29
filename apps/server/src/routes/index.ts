@@ -9,6 +9,7 @@ import healthRoutes from "./health.routes.js";
 import insightsRoutes from "./insights.routes.js";
 import investigationRoutes from "./investigation.routes.js";
 import mcpRoutes from "./mcp.routes.js";
+import observabilityRoutes from "./observability.routes.js";
 import pinsRoutes from "./pins.routes.js";
 import releasesRoutes from "./releases.routes.js";
 import metricsRoutes from "./metrics.routes.js";
@@ -29,6 +30,7 @@ const routes: FastifyPluginAsyncTypebox = async (app) => {
   await app.register(rulesRoutes);
   await app.register(pinsRoutes);
   await app.register(insightsRoutes);
+  await app.register(observabilityRoutes);
   await app.register(mcpRoutes);
 };
 

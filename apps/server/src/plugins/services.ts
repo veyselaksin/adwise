@@ -4,6 +4,7 @@ import { ZenMuxClient } from "../clients/zenmux.client.js";
 import { SnapshotSigner } from "../lib/snapshot.js";
 import { BudgetsRepository } from "../database/repositories/budgets.repository.js";
 import { EntitiesRepository } from "../database/repositories/entities.repository.js";
+import { HealthRepository } from "../database/repositories/health.repository.js";
 import { MetricsRepository } from "../database/repositories/metrics.repository.js";
 import { AgentService } from "../services/agent.service.js";
 import { AnomaliesService } from "../services/anomalies.service.js";
@@ -16,9 +17,12 @@ import { InvestigationService } from "../services/investigation.service.js";
 import { KnowledgeService } from "../services/knowledge.service.js";
 import { McpService } from "../services/mcp.service.js";
 import { MetricsService } from "../services/metrics.service.js";
+import { ObservabilityService } from "../services/observability.service.js";
 import { PinsService } from "../services/pins.service.js";
 import { ReleasesService } from "../services/releases.service.js";
 import { RulesService } from "../services/rules.service.js";
+import { RuntimeService } from "../services/runtime.service.js";
+import type { TelemetryStore } from "../services/telemetry.service.js";
 import type { ModelClient } from "../types/agent.type.js";
 
 export type Services = {
@@ -40,11 +44,17 @@ export type Services = {
   investigation: InvestigationService;
   /** The agent's tools for outside assistants; served only when MCP_SECRET is set. */
   mcp: McpService;
+  /** Read side of the telemetry: KPIs, charts, runs, traces, logs. */
+  observability: ObservabilityService;
+  /** This process's memory, CPU, event loop and dependency checks. */
+  runtime: RuntimeService;
 };
 
 export type ServicesOptions = {
   /** Replaces ZenMux, e.g. with a scripted model in tests. */
   model?: ModelClient;
+  /** Replaces the telemetry recorder's writes, e.g. with failing ones in tests. */
+  telemetryStore?: TelemetryStore;
 };
 
 declare module "fastify" {
@@ -70,6 +80,19 @@ export default fp<ServicesOptions>(
     const budgets = new BudgetsService(new BudgetsRepository(app.db), metrics);
     const anomalies = new AnomaliesService(metrics);
 
+    const { telemetry, telemetryStore, logSink } = app;
+    const runtime = new RuntimeService({
+      pingData: () => new HealthRepository(app.db).ping(),
+      pingTelemetry: () => telemetryStore.ping(),
+      telemetryStats: () => ({
+        runWriteFailures: telemetry.health().writeFailures,
+        logWriteFailures: logSink?.stats().writeFailures ?? 0,
+        logsDroppedOverBudget: logSink?.stats().droppedOverBudget ?? 0,
+      }),
+    });
+    runtime.start();
+    app.addHook("onClose", async () => runtime.stop());
+
     const model = opts.model ?? (config.ZENMUX_API_KEY ? new ZenMuxClient({ apiKey: config.ZENMUX_API_KEY }) : null);
     if (!model) app.log.warn("ZENMUX_API_KEY is not set; the agent is disabled");
 
@@ -87,10 +110,12 @@ export default fp<ServicesOptions>(
       pins,
       insights,
       agent:
-        model && new AgentService(model, { metrics, entities, budgets, releases, anomalies }, knowledge, rules, app.log, signer),
-      investigation: new InvestigationService({ metrics, entities, releases, knowledge, rules, model, log: app.log }),
+        model && new AgentService(model, { metrics, entities, budgets, releases, anomalies }, knowledge, rules, app.log, signer, telemetry),
+      investigation: new InvestigationService({ metrics, entities, releases, knowledge, rules, model, log: app.log, telemetry }),
       mcp: new McpService({ metrics, entities, budgets, releases, anomalies }, knowledge, rules),
+      observability: new ObservabilityService(telemetryStore),
+      runtime,
     });
   },
-  { name: "services", dependencies: ["config", "auth", "database"] },
+  { name: "services", dependencies: ["config", "auth", "database", "telemetry"] },
 );

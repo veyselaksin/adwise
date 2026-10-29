@@ -29,7 +29,7 @@ export const agentController = ({ agent }: Services, defaultModel: AgentModelId)
       if (!reply.raw.writableFinished) abort.abort();
     });
     async function* lines() {
-      for await (const event of agent!.chat(body.messages, { model: body.model ?? defaultModel, signal: abort.signal })) yield `${JSON.stringify(event)}\n`;
+      for await (const event of agent!.chat(body.messages, { model: body.model ?? defaultModel, signal: abort.signal, requestId: reply.request.id })) yield `${JSON.stringify(event)}\n`;
     }
     return reply
       .type("application/x-ndjson; charset=utf-8")

@@ -9,6 +9,10 @@ export class ModelError extends Error {
     readonly retryAfterSeconds?: number,
     /** The provider's own message, for the server log only. */
     readonly detail?: string,
+    /** Attempts made to open the stream, retries included (telemetry). */
+    readonly attempts?: number,
+    /** The request ran out of MODEL_TIMEOUT_MS rather than being refused. */
+    readonly timedOut = false,
   ) {
     super(message);
     this.name = "ModelError";
@@ -18,6 +22,7 @@ export class ModelError extends Error {
 type ProviderError = { error?: { message?: string; code?: string | number; type?: string } };
 
 type Chunk = ProviderError & {
+  id?: string;
   choices?: {
     delta?: {
       content?: string | null;
@@ -27,7 +32,15 @@ type Chunk = ProviderError & {
     };
     finish_reason?: string | null;
   }[];
-  usage?: { prompt_tokens?: number; completion_tokens?: number } | null;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+    prompt_tokens_details?: { cached_tokens?: number };
+    completion_tokens_details?: { reasoning_tokens?: number };
+    /** ZenMux's billed cost for the call, USD, as a decimal string. */
+    cost?: string | number;
+  } | null;
 };
 
 type Options = {
@@ -54,7 +67,8 @@ export class ZenMuxClient implements ModelClient {
   }
 
   async *stream(req: ModelRequest): AsyncGenerator<string, ModelResponse> {
-    const res = await this.open(req);
+    const { res, attempts } = await this.open(req);
+    let requestId = res.headers.get("x-zenmux-requestid") ?? undefined;
     let content = "";
     let reasoning = "";
     const calls: ToolCall[] = [];
@@ -65,6 +79,7 @@ export class ZenMuxClient implements ModelClient {
       const chunk = data as Chunk;
       if (chunk.error) throw toModelError(Number(chunk.error.code) || 500, chunk.error, backoff(1));
       usage = chunk.usage ?? usage;
+      requestId ??= chunk.id;
       const choice = chunk.choices?.[0];
       finishReason = choice?.finish_reason ?? finishReason;
       const delta = choice?.delta;
@@ -98,11 +113,22 @@ export class ZenMuxClient implements ModelClient {
     return {
       message,
       usage: { inputTokens: usage?.prompt_tokens ?? 0, outputTokens: usage?.completion_tokens ?? 0 },
+      telemetry: {
+        // Absent fields stay null: "not reported" is not 0.
+        inputTokens: count(usage?.prompt_tokens),
+        outputTokens: count(usage?.completion_tokens),
+        totalTokens: count(usage?.total_tokens),
+        cachedInputTokens: count(usage?.prompt_tokens_details?.cached_tokens),
+        reasoningTokens: count(usage?.completion_tokens_details?.reasoning_tokens),
+        providerCost: usage?.cost === undefined ? null : count(Number(usage.cost), true),
+        attempts,
+        providerRequestId: requestId ?? null,
+      },
     };
   }
 
   /** Starts the stream, retrying until the provider accepts the request. */
-  private async open(req: ModelRequest): Promise<Response> {
+  private async open(req: ModelRequest): Promise<{ res: Response; attempts: number }> {
     const settings = AGENT_MODELS.find((m) => m.id === req.model);
     const body = JSON.stringify({
       model: req.model,
@@ -131,10 +157,11 @@ export class ZenMuxClient implements ModelClient {
           await this.sleep(backoff(attempt), req.signal);
           continue;
         }
-        throw new ModelError("MODEL_UNAVAILABLE", "The model didn't respond. Try again in a moment.");
+        const timedOut = err instanceof Error && err.name === "TimeoutError";
+        throw new ModelError("MODEL_UNAVAILABLE", "The model didn't respond. Try again in a moment.", undefined, timedOut ? "timed out" : undefined, attempt, timedOut);
       }
 
-      if (res.ok && res.body) return res;
+      if (res.ok && res.body) return { res, attempts: attempt };
 
       const error = ((await res.json().catch(() => ({}))) as ProviderError).error;
       const retryable = res.status === 429 || res.status >= 500;
@@ -143,7 +170,7 @@ export class ZenMuxClient implements ModelClient {
         await this.sleep(wait, req.signal);
         continue;
       }
-      throw toModelError(res.status, error, wait);
+      throw toModelError(res.status, error, wait, attempt);
     }
   }
 }
@@ -169,16 +196,16 @@ async function* sseEvents(body: ReadableStream<Uint8Array>): AsyncGenerator<unkn
   }
 }
 
-function toModelError(status: number, error: ProviderError["error"], waitMs: number): ModelError {
+function toModelError(status: number, error: ProviderError["error"], waitMs: number, attempts?: number): ModelError {
   const retryAfterSeconds = Math.ceil(waitMs / 1000);
   if (status === 402) {
-    return new ModelError("QUOTA_EXHAUSTED", "The model account is out of credit. Top up ZenMux to continue.", undefined, error?.message);
+    return new ModelError("QUOTA_EXHAUSTED", "The model account is out of credit. Top up ZenMux to continue.", undefined, error?.message, attempts);
   }
   if (status === 429) {
-    return new ModelError("RATE_LIMITED", `The model is rate limited. Try again in about ${retryAfterSeconds} s.`, retryAfterSeconds, error?.message);
+    return new ModelError("RATE_LIMITED", `The model is rate limited. Try again in about ${retryAfterSeconds} s.`, retryAfterSeconds, error?.message, attempts);
   }
   if (status >= 500) {
-    return new ModelError("MODEL_UNAVAILABLE", "The model is unavailable right now. Try again in a moment.", undefined, error?.message);
+    return new ModelError("MODEL_UNAVAILABLE", "The model is unavailable right now. Try again in a moment.", undefined, error?.message, attempts);
   }
   // 400/401/403/404: a bad key, model id or request. The details are for the log, not the user.
   return new ModelError(
@@ -186,8 +213,13 @@ function toModelError(status: number, error: ProviderError["error"], waitMs: num
     `The model rejected the request (${status}). Check ZENMUX_API_KEY and the model id.`,
     undefined,
     error?.message,
+    attempts,
   );
 }
+
+/** A non-negative finite number from the provider, else null. */
+const count = (n: number | undefined, fractional = false): number | null =>
+  typeof n === "number" && Number.isFinite(n) && n >= 0 ? (fractional ? n : Math.round(n)) : null;
 
 /** `Retry-After` in seconds or as an HTTP date. */
 function retryAfterMs(header: string | null): number | undefined {

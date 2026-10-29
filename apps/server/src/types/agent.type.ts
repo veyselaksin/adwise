@@ -1,4 +1,5 @@
 import type { AGENT_MODEL_IDS } from "../constants/agent.constant.js";
+import type { ModelCallTelemetry } from "./telemetry.type.js";
 import type { EXPORT_FORMATS, EXPORT_TABLES } from "../constants/export.constant.js";
 
 export type AgentModelId = (typeof AGENT_MODEL_IDS)[number];
@@ -39,7 +40,13 @@ export type ModelRequest = {
   signal?: AbortSignal;
 };
 
-export type ModelResponse = { message: AssistantMessage; usage: ModelUsage };
+export type ModelResponse = {
+  message: AssistantMessage;
+  /** 0s when the provider sent no usage; `telemetry.inputTokens` is null then. */
+  usage: ModelUsage;
+  /** What the provider reported about the call, for observability. Absent from clients that can't tell. */
+  telemetry?: ModelCallTelemetry;
+};
 
 /**
  * Anything that can answer a model request: ZenMux in production, a script in
