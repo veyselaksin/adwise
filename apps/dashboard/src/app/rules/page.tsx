@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { AgentProvider } from "@/components/agent/agent-provider";
-import { AgentToggle } from "@/components/agent/agent-toggle";
-import { AppHeader } from "@/components/app-header";
-import { RuleForm } from "@/components/rules/rule-form";
-import { RuleList } from "@/components/rules/rule-list";
-import { Skeleton } from "@/components/ui/skeleton";
-import { getRules } from "@/lib/api";
+import { AgentProvider } from "@components/agent/agent-provider";
+import { AgentToggle } from "@components/agent/agent-toggle";
+import { AppHeader } from "@components/app-header";
+import { RuleForm } from "@components/rules/rule-form";
+import { RuleList } from "@components/rules/rule-list";
+import { Skeleton } from "@components/ui/skeleton";
+import { getRules } from "@lib/api";
 
 export const metadata: Metadata = { title: "Rules · ADWISE" };
 

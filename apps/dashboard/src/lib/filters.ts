@@ -1,11 +1,11 @@
 // Dashboard state lives in the URL, so a view can be bookmarked or shared.
 
-import { DATE_PATTERN } from "@/constants/dates.constant";
-import { CHANNELS, COUNTRIES, DEFAULT_FILTERS, PRESET_LABELS } from "@/constants/filters.constant";
-import { CHART_METRICS } from "@/constants/metrics.constant";
-import type { RangePreset } from "@/types/dates.type";
-import type { DashboardFilters } from "@/types/filters.type";
-import type { MetricKey } from "@/types/metrics.type";
+import { DATE_PATTERN } from "@constants/dates";
+import { CHANNELS, COUNTRIES, DEFAULT_FILTERS, PRESET_LABELS } from "@constants/filters";
+import { CHART_METRICS } from "@constants/metrics";
+import type { RangePreset } from "@typings/dates";
+import type { DashboardFilters } from "@typings/filters";
+import type { MetricKey } from "@typings/metrics";
 
 type Params = Record<string, string | string[] | undefined>;
 

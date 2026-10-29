@@ -3,16 +3,16 @@
 import { ArrowDownIcon, ArrowUpIcon, ChevronRightIcon, ScanSearchIcon } from "lucide-react";
 import Link from "next/link";
 import { Fragment, type ReactNode, useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardAction, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { formatMetric, formatPct, formatRange, formatUsd } from "@/lib/format";
-import { DETAIL_METRICS } from "@/constants/metrics.constant";
-import type { BudgetPacing, PacingFields } from "@/types/budgets.type";
-import type { DateRange } from "@/types/dates.type";
-import type { MetricDefs, MetricKey, MetricRow } from "@/types/metrics.type";
-import { cn } from "@/lib/utils";
+import { Badge } from "@components/ui/badge";
+import { Button, buttonVariants } from "@components/ui/button";
+import { Card, CardAction, CardDescription, CardHeader, CardTitle } from "@components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@components/ui/table";
+import { formatMetric, formatPct, formatRange, formatUsd } from "@lib/format";
+import { DETAIL_METRICS } from "@constants/metrics";
+import type { BudgetPacing, PacingFields } from "@typings/budgets";
+import type { DateRange } from "@typings/dates";
+import type { MetricDefs, MetricKey, MetricRow } from "@typings/metrics";
+import { cn } from "@lib/utils";
 import { ExportMenu } from "./export-menu";
 
 type Sort = { key: MetricKey; dir: "asc" | "desc" };

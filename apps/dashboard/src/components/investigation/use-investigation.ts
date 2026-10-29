@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { InvestigationEvent, InvestigationRequest, InvestigationStage, InvestigationState } from "@/types/investigation.type";
+import type { InvestigationEvent, InvestigationRequest, InvestigationStage, InvestigationState } from "@typings/investigation";
 
 /** Shown before the server reports them, so the whole path is visible from the start. */
 const STAGES: InvestigationStage[] = [

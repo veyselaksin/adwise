@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { cn } from "@/lib/utils";
+import { cn } from "@lib/utils";
 
 /** App icon + name, matching the API docs sign-in page. */
 export function Brand({ className }: { className?: string }) {

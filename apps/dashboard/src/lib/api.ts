@@ -1,17 +1,17 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { SESSION_COOKIE } from "@/constants/auth.constant";
-import type { AgentModels, ChatMessage } from "@/types/agent.type";
-import type { Brief } from "@/types/brief.type";
-import type { BudgetPacing } from "@/types/budgets.type";
-import type { Entities } from "@/types/entities.type";
-import type { Health } from "@/types/health.type";
-import type { InvestigationRequest } from "@/types/investigation.type";
-import type { Catalog, MetricsQuery, MetricsResult } from "@/types/metrics.type";
-import type { Pin, PinResult } from "@/types/pins.type";
-import type { Release } from "@/types/releases.type";
-import type { Rule } from "@/types/rules.type";
+import { SESSION_COOKIE } from "@constants/auth";
+import type { AgentModels, ChatMessage } from "@typings/agent";
+import type { Brief } from "@typings/brief";
+import type { BudgetPacing } from "@typings/budgets";
+import type { Entities } from "@typings/entities";
+import type { Health } from "@typings/health";
+import type { InvestigationRequest } from "@typings/investigation";
+import type { Catalog, MetricsQuery, MetricsResult } from "@typings/metrics";
+import type { Pin, PinResult } from "@typings/pins";
+import type { Release } from "@typings/releases";
+import type { Rule } from "@typings/rules";
 
 // Server-side only: the API URL and the session token never reach the browser.
 const API_URL = process.env.API_URL ?? "http://localhost:4000";

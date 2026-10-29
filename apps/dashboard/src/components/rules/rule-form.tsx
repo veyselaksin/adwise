@@ -2,11 +2,11 @@
 
 import { Loader2Icon, PlusIcon } from "lucide-react";
 import { useActionState, useRef } from "react";
-import { addRule } from "@/app/rules/actions";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { MAX_RULE_CHARS } from "@/constants/rules.constant";
-import type { RuleResult } from "@/types/rules.type";
+import { addRule } from "@app/rules/actions";
+import { Button } from "@components/ui/button";
+import { Textarea } from "@components/ui/textarea";
+import { MAX_RULE_CHARS } from "@constants/rules";
+import type { RuleResult } from "@typings/rules";
 
 const PLACEHOLDER = "e.g. When a question is about Brazil, also give money in BRL at 5.0 BRL per USD.";
 

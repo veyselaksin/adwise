@@ -1,5 +1,5 @@
-import type { BASE_METRICS, DERIVED_METRICS } from "../constants/metrics.constant";
-import type { DateRange, RangePreset } from "./dates.type";
+import type { BASE_METRICS, DERIVED_METRICS } from "@constants/metrics";
+import type { DateRange, RangePreset } from "@typings/dates";
 
 export type BaseMetric = (typeof BASE_METRICS)[number];
 

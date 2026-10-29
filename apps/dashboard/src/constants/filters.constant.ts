@@ -1,5 +1,5 @@
-import type { RangePreset } from "../types/dates.type";
-import type { DashboardFilters } from "../types/filters.type";
+import type { RangePreset } from "@typings/dates";
+import type { DashboardFilters } from "@typings/filters";
 
 export const PRESET_LABELS: Record<RangePreset, string> = {
   yesterday: "Yesterday",

@@ -1,10 +1,10 @@
 import { ArrowDownRightIcon, ArrowRightIcon, ArrowUpRightIcon } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { formatMetric, formatRange } from "@/lib/format";
-import { change } from "@/lib/metrics";
-import type { DateRange } from "@/types/dates.type";
-import type { KpiTile } from "@/types/metrics.type";
-import { cn } from "@/lib/utils";
+import { Card } from "@components/ui/card";
+import { formatMetric, formatRange } from "@lib/format";
+import { change } from "@lib/metrics";
+import type { DateRange } from "@typings/dates";
+import type { KpiTile } from "@typings/metrics";
+import { cn } from "@lib/utils";
 import { NotFinal } from "./not-final";
 
 export function KpiGrid({ tiles, previousRange }: { tiles: KpiTile[]; previousRange?: DateRange }) {

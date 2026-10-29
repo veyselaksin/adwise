@@ -1,4 +1,4 @@
-import type { ReleaseEvidence } from "./investigation.type";
+import type { ReleaseEvidence } from "@typings/investigation";
 
 export type Release = {
   platform: "ios" | "android";

@@ -1,7 +1,7 @@
 import { ClockIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip";
+import { cn } from "@lib/utils";
 
 /** Marks a number that will still change, with the reason on hover. */
 export function NotFinal({ reason, className, children }: { reason: string; className?: string; children?: ReactNode }) {

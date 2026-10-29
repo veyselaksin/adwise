@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { Brand } from "@/components/brand";
-import { ThemeSwitcher } from "@/components/theme-switcher";
+import { Brand } from "@components/brand";
+import { ThemeSwitcher } from "@components/theme-switcher";
 import { HeroCarousel } from "./hero-carousel";
 import { LoginForm } from "./login-form";
 

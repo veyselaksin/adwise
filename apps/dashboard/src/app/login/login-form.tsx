@@ -2,10 +2,10 @@
 
 import { Loader2Icon } from "lucide-react";
 import { useActionState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import type { LoginState } from "@/types/auth.type";
+import { Button } from "@components/ui/button";
+import { Input } from "@components/ui/input";
+import { Label } from "@components/ui/label";
+import type { LoginState } from "@typings/auth";
 import { signIn } from "./actions";
 
 export function LoginForm() {

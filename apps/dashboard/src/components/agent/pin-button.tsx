@@ -3,9 +3,9 @@
 import { CheckIcon, PinIcon } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { pinQuery } from "@/app/pins/actions";
-import { Button } from "@/components/ui/button";
-import type { AgentStep } from "@/types/agent.type";
+import { pinQuery } from "@app/pins/actions";
+import { Button } from "@components/ui/button";
+import type { AgentStep } from "@typings/agent";
 
 /**
  * Pins the answer's last metrics lookup to the overview. The tile keeps the

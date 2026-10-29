@@ -2,9 +2,9 @@
 
 import { ChevronDownIcon } from "lucide-react";
 import { type ReactNode, useSyncExternalStore } from "react";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BRIEF_COLLAPSED_EVENT, STORAGE_KEYS } from "@/constants/storage.constant";
-import { cn } from "@/lib/utils";
+import { Card, CardDescription, CardHeader, CardTitle } from "@components/ui/card";
+import { BRIEF_COLLAPSED_EVENT, STORAGE_KEYS } from "@constants/storage";
+import { cn } from "@lib/utils";
 
 // Collapsed or not is a per-browser convenience: storage may be blocked, and then it simply stays open.
 function readCollapsed(): boolean {

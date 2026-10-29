@@ -1,5 +1,5 @@
-import type { DateRange, RangePreset } from "./dates.type";
-import type { MetricKey } from "./metrics.type";
+import type { DateRange, RangePreset } from "@typings/dates";
+import type { MetricKey } from "@typings/metrics";
 
 export type Split = "channel" | "country" | "none";
 

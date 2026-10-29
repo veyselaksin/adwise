@@ -1,8 +1,8 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { ApiError, createPin, deletePin } from "@/lib/api";
-import type { PinActionResult } from "@/types/pins.type";
+import { ApiError, createPin, deletePin } from "@lib/api";
+import type { PinActionResult } from "@typings/pins";
 
 /** Runs a change, then refreshes the page so the overview shows it. API errors come back as text. */
 async function change(run: () => Promise<unknown>): Promise<PinActionResult> {

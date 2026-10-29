@@ -1,6 +1,6 @@
-import type { DateRange } from "./dates.type";
-import type { Entities } from "./entities.type";
-import type { MetricKey, Unit } from "./metrics.type";
+import type { DateRange } from "@typings/dates";
+import type { Entities } from "@typings/entities";
+import type { MetricKey, Unit } from "@typings/metrics";
 
 export type InvestigationMetricKey = MetricKey | "cpc";
 

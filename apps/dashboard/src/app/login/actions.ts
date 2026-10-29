@@ -2,9 +2,9 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { ApiError, login } from "@/lib/api";
-import { SESSION_COOKIE } from "@/constants/auth.constant";
-import type { LoginState } from "@/types/auth.type";
+import { ApiError, login } from "@lib/api";
+import { SESSION_COOKIE } from "@constants/auth";
+import type { LoginState } from "@typings/auth";
 
 export async function signIn(_prev: LoginState, form: FormData): Promise<LoginState> {
   const username = String(form.get("username") ?? "").trim();

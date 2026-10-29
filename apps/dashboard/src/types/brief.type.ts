@@ -1,4 +1,4 @@
-import type { DateRange } from "./dates.type";
+import type { DateRange } from "@typings/dates";
 
 export type BriefItem = {
   id: string;

@@ -1,7 +1,7 @@
 import { CheckIcon, CircleIcon, Loader2Icon, MinusIcon } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
-import type { InvestigationStage } from "@/types/investigation.type";
+import { Card } from "@components/ui/card";
+import { cn } from "@lib/utils";
+import type { InvestigationStage } from "@typings/investigation";
 
 const ICONS = {
   pending: CircleIcon,

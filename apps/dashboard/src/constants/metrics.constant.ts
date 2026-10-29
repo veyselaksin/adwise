@@ -1,4 +1,4 @@
-import type { MetricKey } from "../types/metrics.type";
+import type { MetricKey } from "@typings/metrics";
 
 export const BASE_METRICS = [
   "spend",

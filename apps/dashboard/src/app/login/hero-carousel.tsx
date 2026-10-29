@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "@lib/utils";
 
 /** Unsplash photos (Unsplash License, attribution optional). The first matches the API docs sign-in. */
 const SLIDES = [

@@ -15,12 +15,12 @@ import {
   XIcon,
 } from "lucide-react";
 import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { MAX_QUESTION_CHARS } from "@/constants/agent.constant";
-import type { AgentDownload, AgentStep, AgentTurn } from "@/types/agent.type";
-import { cn } from "@/lib/utils";
+import { Button } from "@components/ui/button";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@components/ui/select";
+import { Textarea } from "@components/ui/textarea";
+import { MAX_QUESTION_CHARS } from "@constants/agent";
+import type { AgentDownload, AgentStep, AgentTurn } from "@typings/agent";
+import { cn } from "@lib/utils";
 import { AgentMarkdown } from "./agent-markdown";
 import { CopyButton } from "./copy-button";
 import { PinButton } from "./pin-button";

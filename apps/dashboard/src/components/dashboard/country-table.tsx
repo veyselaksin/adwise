@@ -1,12 +1,12 @@
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CHANNELS, COUNTRIES } from "@/constants/filters.constant";
-import { MIN_SUBSCRIPTIONS } from "@/constants/metrics.constant";
-import type { DateRange } from "@/types/dates.type";
-import type { MetricRow } from "@/types/metrics.type";
-import { formatPct, formatRange, formatUsd } from "@/lib/format";
-import { combineRows } from "@/lib/metrics";
-import { cn } from "@/lib/utils";
+import { Card, CardDescription, CardHeader, CardTitle } from "@components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@components/ui/table";
+import { CHANNELS, COUNTRIES } from "@constants/filters";
+import { MIN_SUBSCRIPTIONS } from "@constants/metrics";
+import type { DateRange } from "@typings/dates";
+import type { MetricRow } from "@typings/metrics";
+import { formatPct, formatRange, formatUsd } from "@lib/format";
+import { combineRows } from "@lib/metrics";
+import { cn } from "@lib/utils";
 import { NotFinal } from "./not-final";
 
 type Props = {

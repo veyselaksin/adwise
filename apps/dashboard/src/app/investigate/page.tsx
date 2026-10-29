@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { AgentProvider } from "@/components/agent/agent-provider";
-import { AgentToggle } from "@/components/agent/agent-toggle";
-import { AppHeader } from "@/components/app-header";
-import { InvestigationWorkspace } from "@/components/investigation/investigation-workspace";
-import { Skeleton } from "@/components/ui/skeleton";
-import { getCatalog, getEntities } from "@/lib/api";
-import { DATE_PATTERN } from "@/constants/dates.constant";
-import { addDays } from "@/lib/format";
+import { AgentProvider } from "@components/agent/agent-provider";
+import { AgentToggle } from "@components/agent/agent-toggle";
+import { AppHeader } from "@components/app-header";
+import { InvestigationWorkspace } from "@components/investigation/investigation-workspace";
+import { Skeleton } from "@components/ui/skeleton";
+import { getCatalog, getEntities } from "@lib/api";
+import { DATE_PATTERN } from "@constants/dates";
+import { addDays } from "@lib/format";
 
 export const metadata: Metadata = { title: "Investigate · ADWISE" };
 

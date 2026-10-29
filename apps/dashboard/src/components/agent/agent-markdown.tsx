@@ -4,8 +4,8 @@ import { CodeIcon, WrapTextIcon } from "lucide-react";
 import { useState } from "react";
 import Markdown, { type Components, type ExtraProps } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Button } from "@components/ui/button";
+import { cn } from "@lib/utils";
 import { CopyButton } from "./copy-button";
 
 /** react-markdown's syntax tree nodes (hast), without depending on its types package. */

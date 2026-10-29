@@ -2,13 +2,13 @@
 
 import { ChevronRightIcon } from "lucide-react";
 import { type ReactNode, useState } from "react";
-import { NotFinal } from "@/components/dashboard/not-final";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { formatCount, formatDay, formatMetric, formatPct, formatUsd } from "@/lib/format";
-import type { BreakdownRow, CacDriver, InvestigationFacts, MetricComparison, ReleaseEvidence } from "@/types/investigation.type";
-import type { Unit } from "@/types/metrics.type";
-import { cn } from "@/lib/utils";
+import { NotFinal } from "@components/dashboard/not-final";
+import { Badge } from "@components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@components/ui/table";
+import { formatCount, formatDay, formatMetric, formatPct, formatUsd } from "@lib/format";
+import type { BreakdownRow, CacDriver, InvestigationFacts, MetricComparison, ReleaseEvidence } from "@typings/investigation";
+import type { Unit } from "@typings/metrics";
+import { cn } from "@lib/utils";
 
 /* ------------------------------------------------------------- formatting */
 

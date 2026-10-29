@@ -3,7 +3,7 @@
 import { CheckIcon, CopyIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { Button } from "@components/ui/button";
 
 /**
  * Copies text to the clipboard. `text` may be a loader (an export to fetch):

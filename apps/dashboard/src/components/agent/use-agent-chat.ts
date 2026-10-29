@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { STORAGE_KEYS } from "@/constants/storage.constant";
-import type { AgentEvent, AgentExport, AgentTurn, ChatMessage } from "@/types/agent.type";
+import { STORAGE_KEYS } from "@constants/storage";
+import type { AgentEvent, AgentExport, AgentTurn, ChatMessage } from "@typings/agent";
 
 /** Restores the last conversation in this browser; a convenience only, so failures are ignored. */
 function readStored(): AgentTurn[] {

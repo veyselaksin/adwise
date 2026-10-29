@@ -1,8 +1,8 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { ApiError, createRule, deleteRule, updateRule } from "@/lib/api";
-import type { Rule, RuleResult } from "@/types/rules.type";
+import { ApiError, createRule, deleteRule, updateRule } from "@lib/api";
+import type { Rule, RuleResult } from "@typings/rules";
 
 /** Runs a change, then refreshes the page so the list shows it. API errors come back as text; redirects pass through. */
 async function change(run: () => Promise<Rule>): Promise<RuleResult> {

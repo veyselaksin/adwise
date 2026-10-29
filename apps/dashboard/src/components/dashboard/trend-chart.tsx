@@ -3,18 +3,18 @@
 import { RocketIcon } from "lucide-react";
 import { useState } from "react";
 import { CartesianGrid, Line, LineChart, ReferenceArea, ReferenceLine, XAxis, YAxis } from "recharts";
-import { Card, CardAction, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { type ChartConfig, ChartContainer, ChartTooltip } from "@/components/ui/chart";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Toggle } from "@/components/ui/toggle";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { CHANNELS, COUNTRIES } from "@/constants/filters.constant";
-import { CHART_METRICS } from "@/constants/metrics.constant";
-import type { DateRange } from "@/types/dates.type";
-import type { DashboardFilters, Split } from "@/types/filters.type";
-import type { MetricDefs, MetricRow } from "@/types/metrics.type";
-import type { Release } from "@/types/releases.type";
-import { addDays, formatCount, formatDay, formatMetric, formatPct, formatUsdCompact } from "@/lib/format";
+import { Card, CardAction, CardDescription, CardHeader, CardTitle } from "@components/ui/card";
+import { type ChartConfig, ChartContainer, ChartTooltip } from "@components/ui/chart";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select";
+import { Toggle } from "@components/ui/toggle";
+import { ToggleGroup, ToggleGroupItem } from "@components/ui/toggle-group";
+import { CHANNELS, COUNTRIES } from "@constants/filters";
+import { CHART_METRICS } from "@constants/metrics";
+import type { DateRange } from "@typings/dates";
+import type { DashboardFilters, Split } from "@typings/filters";
+import type { MetricDefs, MetricRow } from "@typings/metrics";
+import type { Release } from "@typings/releases";
+import { addDays, formatCount, formatDay, formatMetric, formatPct, formatUsdCompact } from "@lib/format";
 import { useFilterNavigation } from "./use-filter-navigation";
 
 /** Color follows the entity, so a filter never repaints a series. */

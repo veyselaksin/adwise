@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
-import { ApiError, runInvestigation } from "@/lib/api";
-import { fail, ndjsonResponse, passError } from "@/lib/ndjson";
+import { ApiError, runInvestigation } from "@lib/api";
+import { fail, ndjsonResponse, passError } from "@lib/ndjson";
 
 /**
  * POST /investigate/run { campaignId, from, to, model? } → the investigation's NDJSON

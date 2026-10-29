@@ -1,13 +1,13 @@
 import { PinIcon } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ApiError, getPinResult, getPins } from "@/lib/api";
-import { formatDay, formatMetric, formatRange } from "@/lib/format";
-import { PIN_DEFAULT_METRICS, PIN_MAX_COLUMNS } from "@/constants/pins.constant";
-import type { MetricDefs, MetricKey, MetricRow } from "@/types/metrics.type";
-import type { PinResult } from "@/types/pins.type";
-import { change } from "@/lib/metrics";
-import { cn } from "@/lib/utils";
+import { Card } from "@components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@components/ui/table";
+import { ApiError, getPinResult, getPins } from "@lib/api";
+import { formatDay, formatMetric, formatRange } from "@lib/format";
+import { PIN_DEFAULT_METRICS, PIN_MAX_COLUMNS } from "@constants/pins";
+import type { MetricDefs, MetricKey, MetricRow } from "@typings/metrics";
+import type { PinResult } from "@typings/pins";
+import { change } from "@lib/metrics";
+import { cn } from "@lib/utils";
 import { UnpinButton } from "./unpin-button";
 
 /**

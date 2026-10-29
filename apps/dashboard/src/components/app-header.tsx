@@ -1,11 +1,11 @@
 import { LogOutIcon } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { signOut } from "@/app/login/actions";
-import { Brand } from "@/components/brand";
-import { ThemeSwitcher } from "@/components/theme-switcher";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { signOut } from "@app/login/actions";
+import { Brand } from "@components/brand";
+import { ThemeSwitcher } from "@components/theme-switcher";
+import { Button, buttonVariants } from "@components/ui/button";
+import { cn } from "@lib/utils";
 
 const PAGES = [
   { href: "/", label: "Overview" },

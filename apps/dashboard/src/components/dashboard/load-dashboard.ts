@@ -1,12 +1,12 @@
 import "server-only";
-import { getBudgetPacing, getCatalog, getReleases, queryMetrics } from "@/lib/api";
-import { KPI_METRICS } from "@/constants/metrics.constant";
-import type { DateRange } from "@/types/dates.type";
-import type { DashboardFilters } from "@/types/filters.type";
-import type { KpiTile, MetricKey, MetricsQuery, MetricsResult } from "@/types/metrics.type";
-import { apiFilters } from "@/lib/filters";
-import { addDays, formatRange } from "@/lib/format";
-import { indexDefs } from "@/lib/metrics";
+import { getBudgetPacing, getCatalog, getReleases, queryMetrics } from "@lib/api";
+import { KPI_METRICS } from "@constants/metrics";
+import type { DateRange } from "@typings/dates";
+import type { DashboardFilters } from "@typings/filters";
+import type { KpiTile, MetricKey, MetricsQuery, MetricsResult } from "@typings/metrics";
+import { apiFilters } from "@lib/filters";
+import { addDays, formatRange } from "@lib/format";
+import { indexDefs } from "@lib/metrics";
 
 /** Fetches everything the overview needs, in parallel, for the filters in the URL. */
 export async function loadDashboard(filters: DashboardFilters) {

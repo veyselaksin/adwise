@@ -1,20 +1,20 @@
 import { Suspense } from "react";
-import { AgentProvider } from "@/components/agent/agent-provider";
-import { AgentToggle } from "@/components/agent/agent-toggle";
-import { AppHeader } from "@/components/app-header";
-import { CountryTable } from "@/components/dashboard/country-table";
-import { DrilldownTable } from "@/components/dashboard/drilldown-table";
-import { ExportMenu } from "@/components/dashboard/export-menu";
-import { FilterBar } from "@/components/dashboard/filter-bar";
-import { KpiGrid } from "@/components/dashboard/kpi-grid";
-import { loadDashboard } from "@/components/dashboard/load-dashboard";
-import { MorningBrief } from "@/components/dashboard/morning-brief";
-import { TrendChart } from "@/components/dashboard/trend-chart";
-import { PinnedTiles } from "@/components/pins/pinned-tiles";
-import { Card } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { filtersToSearch, parseFilters } from "@/lib/filters";
-import { formatDay } from "@/lib/format";
+import { AgentProvider } from "@components/agent/agent-provider";
+import { AgentToggle } from "@components/agent/agent-toggle";
+import { AppHeader } from "@components/app-header";
+import { CountryTable } from "@components/dashboard/country-table";
+import { DrilldownTable } from "@components/dashboard/drilldown-table";
+import { ExportMenu } from "@components/dashboard/export-menu";
+import { FilterBar } from "@components/dashboard/filter-bar";
+import { KpiGrid } from "@components/dashboard/kpi-grid";
+import { loadDashboard } from "@components/dashboard/load-dashboard";
+import { MorningBrief } from "@components/dashboard/morning-brief";
+import { TrendChart } from "@components/dashboard/trend-chart";
+import { PinnedTiles } from "@components/pins/pinned-tiles";
+import { Card } from "@components/ui/card";
+import { Skeleton } from "@components/ui/skeleton";
+import { filtersToSearch, parseFilters } from "@lib/filters";
+import { formatDay } from "@lib/format";
 
 export default function Home({ searchParams }: PageProps<"/">) {
   return (

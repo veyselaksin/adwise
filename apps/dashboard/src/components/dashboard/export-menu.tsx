@@ -1,7 +1,7 @@
 "use client";
 
 import { DownloadIcon, FileJsonIcon, FileSpreadsheetIcon, FileTextIcon, HashIcon, SheetIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@components/ui/dropdown-menu";
 
 const FORMATS = [
   { format: "pdf", label: "PDF report", hint: "Print-ready tables", Icon: FileTextIcon },

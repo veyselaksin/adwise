@@ -1,5 +1,5 @@
-import type { EXPORT_FORMATS } from "../constants/export.constant";
-import type { Unit } from "./metrics.type";
+import type { EXPORT_FORMATS } from "@constants/export";
+import type { Unit } from "@typings/metrics";
 
 export type ExportFormat = keyof typeof EXPORT_FORMATS;
 

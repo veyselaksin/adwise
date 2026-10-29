@@ -3,8 +3,8 @@
 import { PinOffIcon } from "lucide-react";
 import { useTransition } from "react";
 import { toast } from "sonner";
-import { unpin } from "@/app/pins/actions";
-import { Button } from "@/components/ui/button";
+import { unpin } from "@app/pins/actions";
+import { Button } from "@components/ui/button";
 
 export function UnpinButton({ id, title }: { id: string; title: string }) {
   const [pending, start] = useTransition();

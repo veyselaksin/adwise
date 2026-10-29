@@ -2,8 +2,8 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { filtersToSearch } from "@/lib/filters";
-import type { DashboardFilters } from "@/types/filters.type";
+import { filtersToSearch } from "@lib/filters";
+import type { DashboardFilters } from "@typings/filters";
 
 /** Updates the dashboard's URL state; `pending` is true while the new data loads. */
 export function useFilterNavigation(current: DashboardFilters) {

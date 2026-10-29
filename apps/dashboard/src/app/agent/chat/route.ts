@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
-import { ApiError, askAgent } from "@/lib/api";
-import { fail, ndjsonResponse, passError } from "@/lib/ndjson";
-import type { ChatMessage } from "@/types/agent.type";
+import { ApiError, askAgent } from "@lib/api";
+import { fail, ndjsonResponse, passError } from "@lib/ndjson";
+import type { ChatMessage } from "@typings/agent";
 
 /**
  * POST /agent/chat { messages, model? } → the agent's NDJSON stream, passed through

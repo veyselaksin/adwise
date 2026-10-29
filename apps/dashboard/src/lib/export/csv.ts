@@ -1,5 +1,5 @@
-import type { Unit } from "@/types/metrics.type";
-import type { CellValue, ExportTable } from "@/types/export.type";
+import type { Unit } from "@typings/metrics";
+import type { CellValue, ExportTable } from "@typings/export";
 
 /** Money to the cent, ratios to 4 decimals (0.0364 = 3.64%); counts as they are. */
 const DECIMALS: Record<Unit, number | null> = { usd: 2, ratio: 4, count: null };

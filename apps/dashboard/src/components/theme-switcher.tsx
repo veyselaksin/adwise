@@ -3,7 +3,7 @@
 import { MonitorIcon, MoonIcon, SunIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useSyncExternalStore } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "@lib/utils";
 
 const OPTIONS = [
   { value: "system", label: "System", Icon: MonitorIcon },

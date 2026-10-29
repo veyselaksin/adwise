@@ -1,7 +1,7 @@
 import "server-only";
 import PDFDocument from "pdfkit";
 import { formatCell } from "./formats";
-import type { ExportReport, ExportTable } from "@/types/export.type";
+import type { ExportReport, ExportTable } from "@typings/export";
 
 const MARGIN = 36;
 const FONT = "Helvetica";

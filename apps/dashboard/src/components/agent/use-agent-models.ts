@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { STORAGE_KEYS } from "@/constants/storage.constant";
-import type { AgentModel, AgentModels } from "@/types/agent.type";
+import { STORAGE_KEYS } from "@constants/storage";
+import type { AgentModel, AgentModels } from "@typings/agent";
 
 /**
  * The models the agent offers and the one this browser last picked. Until the

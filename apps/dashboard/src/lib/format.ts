@@ -1,7 +1,7 @@
 // Number and date formatting, fixed to en-US so server and browser render the
 // same text. Team convention: USD with two decimals, percentages with one.
 
-import type { MetricDefinition } from "@/types/metrics.type";
+import type { MetricDefinition } from "@typings/metrics";
 
 const usdFormat = new Intl.NumberFormat("en-US", {
   style: "currency",

@@ -1,4 +1,4 @@
-import { ApiError, getAgentModels } from "@/lib/api";
+import { ApiError, getAgentModels } from "@lib/api";
 
 /** GET /agent/models → the models the agent panel offers, and the default. */
 export async function GET() {

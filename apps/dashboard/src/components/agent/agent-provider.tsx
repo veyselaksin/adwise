@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, type ReactNode, use, useState } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "@lib/utils";
 import { AgentPanel } from "./agent-panel";
 
 type AgentState = { open: boolean; setOpen: (open: boolean) => void };

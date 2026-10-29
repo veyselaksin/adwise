@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { SESSION_COOKIE } from "@/constants/auth.constant";
+import { SESSION_COOKIE } from "@constants/auth";
 
 /**
  * Sends visitors without a session to the sign-in page. This is only the first

@@ -1,12 +1,12 @@
 "use client";
 
 import { AlertTriangleIcon, InfoIcon, Loader2Icon, SparklesIcon } from "lucide-react";
-import { NotFinal } from "@/components/dashboard/not-final";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatRange } from "@/lib/format";
-import type { Finding, InvestigationFacts, InvestigationState, MetricComparison } from "@/types/investigation.type";
-import { cn } from "@/lib/utils";
+import { NotFinal } from "@components/dashboard/not-final";
+import { Badge } from "@components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@components/ui/card";
+import { formatRange } from "@lib/format";
+import type { Finding, InvestigationFacts, InvestigationState, MetricComparison } from "@typings/investigation";
+import { cn } from "@lib/utils";
 import {
   assessmentClass,
   DailyTable,

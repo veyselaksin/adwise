@@ -1,7 +1,7 @@
 import "server-only";
 import writeExcelFile, { type Cell, type Row, type SheetData } from "write-excel-file/node";
-import type { Unit } from "@/types/metrics.type";
-import type { ExportReport, ExportTable } from "@/types/export.type";
+import type { Unit } from "@typings/metrics";
+import type { ExportReport, ExportTable } from "@typings/export";
 
 const NUMBER_FORMATS: Record<Unit, string> = {
   usd: "[$$-409]#,##0.00",
