@@ -28,6 +28,11 @@ services:
       CASE_DIR: /case
       ZENMUX_API_KEY: ${ZENMUX_API_KEY:-}
       AGENT_MODEL: ${AGENT_MODEL:-deepseek/deepseek-v4.1-flash}
+      # Creative Studio images; an empty IMAGE_API_KEY falls back to ZENMUX_API_KEY.
+      IMAGE_API_KEY: ${IMAGE_API_KEY:-}
+      IMAGE_MODEL: ${IMAGE_MODEL:-klingai/kling-v3}
+      IMAGE_DAILY_LIMIT: ${IMAGE_DAILY_LIMIT:-40}
+      TELEMETRY_RETENTION_DAYS: ${TELEMETRY_RETENTION_DAYS:-30}
       # ChatGPT's MCP connector, at https://<api domain>/mcp/<MCP_SECRET>. Empty turns it off.
       MCP_SECRET: ${MCP_SECRET:-}
     volumes:
