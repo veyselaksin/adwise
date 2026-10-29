@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import fp from "fastify-plugin";
+import { type ImageClient, ZenMuxImageClient } from "../clients/image.client.js";
 import { ZenMuxClient } from "../clients/zenmux.client.js";
 import { SnapshotSigner } from "../lib/snapshot.js";
 import { BudgetsRepository } from "../database/repositories/budgets.repository.js";
@@ -11,6 +12,7 @@ import { AnomaliesService } from "../services/anomalies.service.js";
 import { AuthService } from "../services/auth.service.js";
 import { BriefService } from "../services/brief.service.js";
 import { BudgetsService } from "../services/budgets.service.js";
+import { CreativesService } from "../services/creatives.service.js";
 import { EntitiesService } from "../services/entities.service.js";
 import { InsightsService } from "../services/insights.service.js";
 import { InvestigationService } from "../services/investigation.service.js";
@@ -42,6 +44,8 @@ export type Services = {
   agent: AgentService | null;
   /** Always on; without ZENMUX_API_KEY its reports have the facts but no interpretation. */
   investigation: InvestigationService;
+  /** Creative studio: measured context, concepts (text model) and images (image provider). */
+  creatives: CreativesService;
   /** The agent's tools for outside assistants; served only when MCP_SECRET is set. */
   mcp: McpService;
   /** Read side of the telemetry: KPIs, charts, runs, traces, logs. */
@@ -53,6 +57,8 @@ export type Services = {
 export type ServicesOptions = {
   /** Replaces ZenMux, e.g. with a scripted model in tests. */
   model?: ModelClient;
+  /** Replaces the image provider, e.g. with a scripted one in tests; null turns images off. */
+  image?: ImageClient | null;
   /** Replaces the telemetry recorder's writes, e.g. with failing ones in tests. */
   telemetryStore?: TelemetryStore;
 };
@@ -95,6 +101,20 @@ export default fp<ServicesOptions>(
 
     const model = opts.model ?? (config.ZENMUX_API_KEY ? new ZenMuxClient({ apiKey: config.ZENMUX_API_KEY }) : null);
     if (!model) app.log.warn("ZENMUX_API_KEY is not set; the agent is disabled");
+    const imageKey = config.IMAGE_API_KEY || config.ZENMUX_API_KEY;
+    const image = opts.image !== undefined ? opts.image : imageKey ? new ZenMuxImageClient({ apiKey: imageKey }) : null;
+    if (!image) app.log.warn("No IMAGE_API_KEY or ZENMUX_API_KEY; creative image generation is disabled");
+    const creatives = await CreativesService.load(config.CREATIVES_PATH, {
+      metrics,
+      entities,
+      model,
+      image,
+      imageModel: config.IMAGE_MODEL,
+      dailyLimit: config.IMAGE_DAILY_LIMIT,
+      assetsDir: config.CREATIVE_ASSETS_DIR,
+      log: app.log,
+      telemetry,
+    });
 
     app.decorate("services", {
       auth: new AuthService({ user: config.APP_USER, password: config.APP_PASSWORD }, async (payload, signOpts) =>
@@ -112,6 +132,7 @@ export default fp<ServicesOptions>(
       agent:
         model && new AgentService(model, { metrics, entities, budgets, releases, anomalies }, knowledge, rules, app.log, signer, telemetry),
       investigation: new InvestigationService({ metrics, entities, releases, knowledge, rules, model, log: app.log, telemetry }),
+      creatives,
       mcp: new McpService({ metrics, entities, budgets, releases, anomalies }, knowledge, rules),
       observability: new ObservabilityService(telemetryStore),
       runtime,

@@ -2,7 +2,7 @@
 // null, never 0: render them as "Not reported" / "Unavailable".
 
 export type ObservabilityRange = "1h" | "24h" | "7d" | "30d";
-export type RunKind = "agent" | "investigation";
+export type RunKind = "agent" | "investigation" | "creative_concepts" | "creative_brief" | "creative_image";
 export type RunStatus = "running" | "success" | "failure" | "cancelled" | "timeout" | "interrupted";
 export type RunStatusFilter = "success" | "failed" | "failure" | "timeout" | "cancelled" | "interrupted" | "running";
 export type LogLevel = "debug" | "info" | "warn" | "error" | "fatal";

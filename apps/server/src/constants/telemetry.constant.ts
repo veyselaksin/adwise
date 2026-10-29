@@ -8,7 +8,7 @@ export const OBSERVABILITY_RANGES = {
 export const OBSERVABILITY_RANGE_KEYS = Object.keys(OBSERVABILITY_RANGES) as (keyof typeof OBSERVABILITY_RANGES)[];
 export const OBSERVABILITY_DEFAULT_RANGE = "24h";
 
-export const RUN_KINDS = ["agent", "investigation"] as const;
+export const RUN_KINDS = ["agent", "investigation", "creative_concepts", "creative_brief", "creative_image"] as const;
 export const RUN_STATUSES = ["running", "success", "failure", "cancelled", "timeout", "interrupted"] as const;
 export const SPAN_KINDS = ["run", "model", "tool", "stage"] as const;
 export const LOG_LEVELS = ["debug", "info", "warn", "error", "fatal"] as const;

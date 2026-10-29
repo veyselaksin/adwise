@@ -344,6 +344,11 @@ stored telemetry.
 | `ZENMUX_API_KEY` | | empty | The agent's model key. Empty turns the agent off and leaves the rest working. |
 | `AGENT_MODEL` | | `deepseek/deepseek-v4.1-flash` | Default model: `deepseek/deepseek-v4.1-flash`, `z-ai/glm-5.2` or `openai/gpt-6.1-sol` |
 | `MCP_SECRET` | | empty | Enables `/mcp/<secret>` for ChatGPT. 32+ of `[A-Za-z0-9_-]`. |
+| `IMAGE_API_KEY` | | empty | Creative Studio image key (ZenMux image API). Empty uses `ZENMUX_API_KEY`; with neither, image generation is off. |
+| `IMAGE_MODEL` | | `klingai/kling-v3` | Image model (the list is `IMAGE_MODELS` in `constants/creatives.constant.ts`) |
+| `IMAGE_DAILY_LIMIT` | | `40` | Images the team may generate per UTC day (0–1000). Failures count; each request may be billed. |
+| `CREATIVES_PATH` | | `data/creatives.json` | Saved creatives (records) |
+| `CREATIVE_ASSETS_DIR` | | `data/creatives` | Generated image files. Needs a persistent volume in production. |
 
 Relative paths are resolved from `apps/server`.
 
@@ -382,11 +387,11 @@ Trying an endpoint in Swagger UI:
 
 ## API reference
 
-All 32 operations, taken from the generated spec. Everything except the first two needs the JWT.
+All 42 operations, taken from the generated spec. Everything except the first two needs the JWT.
 Money is USD, dates are `YYYY-MM-DD` (UTC).
 
 **Rate limits:** 300 requests per minute per client globally. Stricter limits apply to login
-(10/min), agent chat (10/min), investigations (10/min) and MCP (60/min). Over the limit, the
+(10/min), agent chat (10/min), investigations (10/min), creative concepts and brief suggestions (10/min each), creative images (6 requests/min) and MCP (60/min). Over the limit, the
 response is `429 RATE_LIMITED`.
 
 | Method | Path | Tag | What it does |
@@ -417,6 +422,16 @@ response is `429 RATE_LIMITED`.
 | GET | `/insights/{id}` | insights | Open an insight, with its evidence |
 | PATCH | `/insights/{id}` | insights | Rename an insight |
 | DELETE | `/insights/{id}` | insights | Delete an insight |
+| GET | `/creatives/config` | creatives | Studio settings: concept/image availability, image model, aspect ratios, today's usage |
+| GET | `/creatives/context` | creatives | A campaign's, ad set's or ad's measured performance vs the previous period (no model) |
+| POST | `/creatives/brief-suggestions` | creatives | AI suggestions for the brief's empty fields, each marked data-based or assumption (nothing saved) |
+| POST | `/creatives/concepts` | creatives | 2–3 validated, guarded concepts from the text model (nothing saved, no image) |
+| POST | `/creatives` | creatives | Generate 1–3 images (each paid, idempotent per request) and save each as a creative |
+| GET | `/creatives` | creatives | List your creatives (search, status, basis, campaign, page) |
+| GET | `/creatives/{id}` | creatives | Open a creative |
+| GET | `/creatives/{id}/image` | creatives | The image bytes (owner only, uncached) |
+| PATCH | `/creatives/{id}` | creatives | Edit title and ad copy |
+| DELETE | `/creatives/{id}` | creatives | Delete a creative and its image |
 | GET | `/observability/summary` | observability | Agent-run KPIs with a previous-window comparison |
 | GET | `/observability/timeseries` | observability | Runs, durations, tokens and cost over time |
 | GET | `/observability/runs` | observability | Search, filter, sort and page runs |
@@ -700,6 +715,96 @@ no per-user data model.
 - No alerting. A natural next step is a webhook when the failure rate or P95 crosses a threshold.
 - Runtime history resets with the process. Persisting samples would allow day-scale memory trends.
 - The ids are OpenTelemetry-shaped, so exporting spans over OTLP later wouldn't change the model.
+
+### 11. Creative Studio (`/creatives`)
+
+From measured performance to creative concepts the team can test, and real images for them.
+
+**Flow.** Pick a campaign (optionally an ad set or ad) and a period, or switch to an exploratory brief.
+The studio loads the selection's measured performance (no model, no cost), the user adds an optional
+brief (or asks the AI to suggest its empty fields), and the text model writes 2–3 concepts. The user picks
+one, edits its copy and image prompt, picks 1, 2 or 3 images, and only then generates, the one paid step. Images, copy, the concept and a frozen snapshot of the
+source's metrics are saved to a private library (`/creatives/library`, `/creatives/{id}`), where a
+creative can be downloaded, its copy edited, deleted, or used for a new variation.
+
+**Measured vs AI.** The performance panel comes from `MetricsService.query`, so every figure matches the
+overview and investigations (CAC = spend ÷ subscriptions; "conversions" are subscriptions; ROAS is D7 ROAS,
+the only revenue recorded). Each metric is marked *observed* (summed from the warehouse) or *calculated*
+(a ratio of sums, formula shown); one that can't be computed shows n/a, never 0; not-final values carry the
+usual marker. A "What this data can't tell you" list names what creative work usually wants and the
+warehouse doesn't hold (demographics, creative content, reach, post-click behaviour, ROAS beyond D7).
+Concepts keep three things apart: **measured evidence** (each line cites `metric:…` or `ad:…`),
+**assumptions** (not in the data) and a **test hypothesis** (untested, never a prediction).
+
+**Honesty guardrails.** The concept reply is validated against a TypeBox schema (one retry, then
+`MALFORMED_RESPONSE`). The investigation's figure check runs on it: any money or percentage figure not in
+the measured data removes its sentence, evidence citing unknown ids is dropped, and the UI says how much
+was removed. With no selection, or one with no spend or under 1,000 impressions, concepts are labeled
+**exploratory**, carry no evidence, and the prompt forbids metrics. Evidence sent back with an image request
+is re-checked on the server, so the browser can't promote an edited claim to "measured".
+
+**Brief suggestions.** "Suggest with AI" (`POST /creatives/brief-suggestions`) fills only the empty fields,
+never over what the user typed (also enforced on the server). Each suggestion is labeled in the UI as
+*from the data* (it follows from the selection's names, channel, country or measured direction) or
+*assumption*, with a one-line note, until the user edits it; "Clear unedited suggestions" undoes them.
+The prompt forbids stating audience demographics, product features, prices or offers the data doesn't hold,
+and suggestions carry no money or percentage figures at all (a sentence with one is removed). Once a user
+keeps a suggestion it's part of their brief, which the concept writer treats as the user's claim, not data.
+Runs are recorded as `creative_brief`.
+
+**Image provider.** Kling v3 (`klingai/kling-v3`) through ZenMux's Vertex AI protocol
+(`POST https://zenmux.ai/api/vertex-ai/v1/publishers/klingai/models/kling-v3:predict`), a separate endpoint
+and client (`clients/image.client.ts`) from the text models. Kling returns a signed, expiring URL on its CDN,
+not bytes, so the server downloads it at once: https only, `*.klingai.com` only, no redirects, at most 15 MB,
+and the bytes must be a real PNG, JPEG or WebP. Supported ratios are the ones Kling reports: 1:1 (default),
+4:3, 3:4, 16:9, 9:16, 3:2, 2:3, 21:9. The prompt gets a fixed "no text, letters or logos" suffix: ad copy
+stays editable app data shown beside the image, and the preview says any lettering in the image is unchecked.
+Only the image prompt goes to the image provider; the concept prompt tells the model to keep business
+data out of it.
+
+**Several images.** A request asks for 1–3 images (`count`). They are separate provider calls run side by
+side from the same prompt, so each comes out different and is saved as its own creative ("Title (2/3)"),
+under one observability run with a span per image. If some fail, the others are kept and the response says
+"2 of 3 images generated"; only when all fail is the request an error.
+
+**Cost controls.** Concepts and images are separate requests, so nothing is billed until a concept is
+reviewed. Each image request carries a client idempotency key (the same key returns the saved creatives, no
+new request); one request per account at a time (`409`); at most 4 images in flight server-wide (`429`);
+`IMAGE_DAILY_LIMIT` per UTC day, counted in images, failures included (`429 DAILY_LIMIT_REACHED` when fewer
+than `count` are left, and the UI disables counts above what's left); 6 requests/min per client. Only a provider `429`
+is retried automatically (it never ran); timeouts, 5xx and network errors may have been billed, so the user
+retries deliberately, with a button labeled as a new paid request. A dropped connection re-sends the same key
+instead. Reopening a creative or changing filters never generates anything.
+
+**Cost reporting.** ZenMux reports no per-image cost for Kling v3 and lists a price that isn't per image, so
+cost shows as **Unavailable** with the reason, and the observability run's cost stays null. If the provider
+starts returning `usage.cost`, it's recorded as reported cost.
+
+**Observability.** Three run kinds: `creative_concepts` and `creative_brief` (model spans with tokens and
+ZenMux's reported cost) and `creative_image` (a `Generate image` model span per image with attempts, provider
+request id and size, then `Store image`; a partly failed batch is a failed run).
+Prompts are never stored; spans keep sizes and safe metadata only. Lifecycle logs (`component: creatives`)
+carry the run and trace ids. Provider error text goes to the log only, with the API key scrubbed, and never
+to the client.
+
+**Access and storage.** Every route needs the JWT. Creatives are private to the account that made them:
+another account gets `404` for its records and images (the app has one shared account today, so in practice
+the team shares a library). Records are a JSON file (`CREATIVES_PATH`, atomic writes like insights), images
+are files named `<uuid>.<ext>` in `CREATIVE_ASSETS_DIR`, served only through the authenticated
+`/creatives/{id}/image` route (and the dashboard's proxy of it), `private, no-store`. Nothing is public and
+nothing goes into the case DB.
+
+**Persistence limits.** Both live on the server's local disk, in `apps/server/data` like the rules and
+telemetry. In Docker that is the named volume; on a platform with an ephemeral filesystem (serverless,
+containers without a volume) creatives and images are lost on redeploy. Several replicas would need object
+storage (e.g. S3 with private objects and short-lived signed URLs) and a shared database. A generation that
+was running when the process stopped is marked failed (`INTERRUPTED`) at the next boot, noting it may have been billed.
+
+**Tests:** `test/creatives.test.ts`: context matches the metric layer, no fabricated metrics without
+delivery, brief suggestions (empty fields only, no figures, assumption labels), multi-image requests
+(parallel, limits counted per image, partial failure, replay), malformed and guarded concept replies, credentials and validation, provider failures, idempotency,
+concurrency and the daily limit, auth on every route, other accounts' creatives, persistence across restarts,
+file deletion, the client's URL allowlist and byte checks, retry policy, and key redaction in responses and logs.
 
 ## Domain rules: metric definitions
 

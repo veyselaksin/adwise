@@ -223,7 +223,7 @@ export class RunTrace {
         toolCalls: this.toolCalls,
         ...(outcome.errorCategory && { errorCategory: outcome.errorCategory, error: errorMessage }),
       },
-      `${this.input.kind === "agent" ? "Agent run" : "Investigation"} ${OUTCOME_WORDS[outcome.status]}`,
+      `${RUN_WORDS[this.input.kind]} ${OUTCOME_WORDS[outcome.status]}`,
     );
   }
 }
@@ -280,6 +280,14 @@ export const emptyUsage = (patch: Partial<ModelCallTelemetry> = {}): ModelCallTe
   providerRequestId: null,
   ...patch,
 });
+
+const RUN_WORDS: Record<RunKind, string> = {
+  agent: "Agent run",
+  investigation: "Investigation",
+  creative_concepts: "Creative concepts",
+  creative_brief: "Brief suggestions",
+  creative_image: "Creative image",
+};
 
 const OUTCOME_WORDS: Record<RunOutcome["status"], string> = {
   success: "succeeded",

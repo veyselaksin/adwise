@@ -16,7 +16,13 @@ export const OBS_RANGES: { value: ObservabilityRange; label: string }[] = [
 ];
 export const OBS_DEFAULT_RANGE: ObservabilityRange = "24h";
 
-export const RUN_KIND_LABELS: Record<RunKind, string> = { agent: "Agent chat", investigation: "Investigation" };
+export const RUN_KIND_LABELS: Record<RunKind, string> = {
+  agent: "Agent chat",
+  investigation: "Investigation",
+  creative_concepts: "Creative concepts",
+  creative_brief: "Brief suggestions",
+  creative_image: "Creative image",
+};
 
 export const RUN_STATUS_LABELS: Record<RunStatus, string> = {
   running: "Running",

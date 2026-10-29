@@ -5,6 +5,21 @@ import { SESSION_COOKIE } from "@constants/auth";
 import type { AgentModels, ChatMessage } from "@typings/agent";
 import type { AnomalyQuery, AnomalyReport } from "@typings/anomalies";
 import type { Brief } from "@typings/brief";
+import type {
+  BriefSuggestRequest,
+  BriefSuggestResult,
+  ConceptsRequest,
+  ConceptsResult,
+  Creative,
+  CreativeContext,
+  CreativeCopy,
+  CreativeList,
+  CreativeListQuery,
+  CreativeSource,
+  GenerateRequest,
+  GenerateResult,
+  StudioConfig,
+} from "@typings/creatives";
 import type { BudgetPacing } from "@typings/budgets";
 import type { Entities } from "@typings/entities";
 import type { Health } from "@typings/health";
@@ -147,6 +162,50 @@ export const renameInsight = (id: string, title: string) =>
 
 export const deleteInsight = (id: string) =>
   authed<Insight>(`/insights/${encodeURIComponent(id)}`, { method: "DELETE" });
+
+/** Whether concepts and images are configured, the image model, today's usage. Never credentials. */
+export const getStudioConfig = () => authed<StudioConfig>("/creatives/config");
+
+/** A campaign's, ad set's or ad's measured performance for the studio (no model call). */
+export const getCreativeContext = (source: CreativeSource) =>
+  authed<CreativeContext>(`/creatives/context?${queryOf(source)}`);
+
+/** 2–3 concepts from the text model; nothing is saved and no image is requested. */
+export const generateConcepts = (request: ConceptsRequest) =>
+  authed<ConceptsResult>("/creatives/concepts", { method: "POST", body: JSON.stringify(request) });
+
+export const suggestBrief = (request: BriefSuggestRequest) =>
+  authed<BriefSuggestResult>("/creatives/brief-suggestions", { method: "POST", body: JSON.stringify(request) });
+
+/** 1–3 paid images; the same idempotency key returns the saved creatives instead. */
+export const generateCreative = (request: GenerateRequest) =>
+  authed<GenerateResult>("/creatives", { method: "POST", body: JSON.stringify(request) });
+
+export const getCreatives = (query: CreativeListQuery = {}) => authed<CreativeList>(`/creatives?${queryOf(query)}`);
+
+export const getCreative = (id: string) => authed<Creative>(`/creatives/${encodeURIComponent(id)}`);
+
+export const updateCreative = (id: string, changes: { title?: string; copy?: Partial<CreativeCopy> }) =>
+  authed<Creative>(`/creatives/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(changes) });
+
+export const deleteCreative = (id: string) => authed<Creative>(`/creatives/${encodeURIComponent(id)}`, { method: "DELETE" });
+
+/**
+ * A creative's image bytes, for the dashboard's image route. Returns the API's response
+ * as is (binary on success, the envelope on errors); `null` without a session.
+ */
+export async function fetchCreativeImage(id: string, download: boolean): Promise<Response | null> {
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  if (!token) return null;
+  try {
+    return await fetch(`${API_URL}/creatives/${encodeURIComponent(id)}/image${download ? "?download=true" : ""}`, {
+      cache: "no-store",
+      headers: { authorization: `Bearer ${token}` },
+    });
+  } catch {
+    throw new ApiError("API_UNREACHABLE", "The API is not reachable. Try again in a moment.");
+  }
+}
 
 export const getRules = () => authed<Rule[]>("/rules");
 

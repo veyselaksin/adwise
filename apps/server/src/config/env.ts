@@ -1,6 +1,7 @@
 import Type, { type Static } from "typebox";
 import Value from "typebox/value";
 import { AGENT_MODEL_IDS } from "../constants/agent.constant.js";
+import { IMAGE_DAILY_LIMIT_DEFAULT, IMAGE_MODEL_IDS } from "../constants/creatives.constant.js";
 import { literals } from "../schemas/common.schema.js";
 
 const EnvSchema = Type.Object({
@@ -43,6 +44,19 @@ const EnvSchema = Type.Object({
   ZENMUX_API_KEY: Type.String({ default: "" }),
   /** The model that answers when the dashboard doesn't pick one; one of AGENT_MODELS. */
   AGENT_MODEL: literals(AGENT_MODEL_IDS, { default: AGENT_MODEL_IDS[0] }),
+  /**
+   * Key for the image provider (ZenMux's image API, a separate endpoint from the text models). Empty uses
+   * ZENMUX_API_KEY, since one ZenMux key covers both; with neither set, image generation is off.
+   */
+  IMAGE_API_KEY: Type.String({ default: "" }),
+  /** The model that generates creative images; one of IMAGE_MODELS. */
+  IMAGE_MODEL: literals(IMAGE_MODEL_IDS, { default: IMAGE_MODEL_IDS[0] }),
+  /** Images the team may generate per UTC day (each one is billed); failures count. */
+  IMAGE_DAILY_LIMIT: Type.Integer({ minimum: 0, maximum: 1000, default: IMAGE_DAILY_LIMIT_DEFAULT }),
+  /** Saved creatives (a JSON file the server writes). */
+  CREATIVES_PATH: Type.String({ minLength: 1, default: "data/creatives.json" }),
+  /** Generated images, one file each. Use a persistent volume in production: a container's own disk is lost on redeploy. */
+  CREATIVE_ASSETS_DIR: Type.String({ minLength: 1, default: "data/creatives" }),
   /**
    * The MCP endpoint for outside assistants (ChatGPT) is served at /mcp/<MCP_SECRET>; the
    * unguessable path is its only protection. Empty disables it. Generate: openssl rand -hex 32

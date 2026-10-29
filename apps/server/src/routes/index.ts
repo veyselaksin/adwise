@@ -2,6 +2,7 @@ import type { FastifyPluginAsyncTypebox } from "@fastify/type-provider-typebox";
 import agentRoutes from "./agent.routes.js";
 import anomaliesRoutes from "./anomalies.routes.js";
 import authRoutes from "./auth.routes.js";
+import creativesRoutes from "./creatives.routes.js";
 import briefRoutes from "./brief.routes.js";
 import budgetsRoutes from "./budgets.routes.js";
 import entitiesRoutes from "./entities.routes.js";
@@ -30,6 +31,7 @@ const routes: FastifyPluginAsyncTypebox = async (app) => {
   await app.register(rulesRoutes);
   await app.register(pinsRoutes);
   await app.register(insightsRoutes);
+  await app.register(creativesRoutes);
   await app.register(observabilityRoutes);
   await app.register(mcpRoutes);
 };

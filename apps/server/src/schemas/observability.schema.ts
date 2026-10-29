@@ -24,7 +24,7 @@ const Range = literals(OBSERVABILITY_RANGE_KEYS, {
   default: OBSERVABILITY_DEFAULT_RANGE,
   description: "Time window ending now (wall-clock time, not the case's calendar)",
 });
-const Kind = literals([...RUN_KINDS], { description: "agent (chat questions) or investigation (campaign investigations)" });
+const Kind = literals([...RUN_KINDS], { description: "agent (chat questions), investigation (campaign investigations), creative_concepts (Creative Studio concepts), creative_brief (Creative Studio brief suggestions) or creative_image (Creative Studio images)" });
 /** Ids are UUIDs or hex; nothing else can reach the store's LIKE. */
 const Id = (description: string, minLength = 1) => Type.String({ minLength, maxLength: 64, pattern: "^[A-Za-z0-9-]+$", description });
 

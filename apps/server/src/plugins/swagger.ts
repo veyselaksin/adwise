@@ -68,6 +68,11 @@ export default fp(
               "Agent answers saved as frozen reports with the evidence the agent read; shared with the team by link, changed only by whoever saved them.",
           },
           {
+            name: "creatives",
+            description:
+              "Creative Studio: measured context for a campaign, ad set or ad, AI concepts that cite it (or are labeled exploratory), and images from a separate image provider, saved privately per account.",
+          },
+          {
             name: "pins",
             description: "Agent lookups pinned to the overview as live tiles; re-run on the metric layer, no model call.",
           },

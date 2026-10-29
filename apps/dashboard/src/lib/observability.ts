@@ -1,7 +1,7 @@
 // Formatting and URL state for the Observability page. Unknown values come
 // back as explicit words, never as 0, so "not reported" can't read as "none".
 
-import { OBS_DEFAULT_RANGE, OBS_RANGES, OBS_TABS, type ObsTab } from "@constants/observability";
+import { OBS_DEFAULT_RANGE, OBS_RANGES, OBS_TABS, RUN_KIND_LABELS, type ObsTab } from "@constants/observability";
 import type { LogLevel, ObservabilityRange, RunKind, RunQuery, RunStatusFilter } from "@typings/observability";
 
 export const NOT_REPORTED = "Not reported";
@@ -101,7 +101,7 @@ export function parseObsState(params: Params): ObsState {
   return {
     tab,
     range,
-    kind: kind === "agent" || kind === "investigation" ? kind : undefined,
+    kind: kind && Object.hasOwn(RUN_KIND_LABELS, kind) ? (kind as RunKind) : undefined,
     status: one(params.status) as RunStatusFilter | undefined,
     model: one(params.model) || undefined,
     tool: one(params.tool) || undefined,
