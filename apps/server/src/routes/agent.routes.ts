@@ -43,6 +43,7 @@ const agentRoutes: FastifyPluginAsyncTypebox = async (app) => {
           "- `note` `{ text }`: the model's interim remark before more lookups",
           "- `answer` `{ text }`: the final answer, Markdown",
           "- `follow_ups` `{ questions }`: up to 3 suggested next questions, right after `answer` (the model writes them in a hidden block that's left out of `answer`)",
+          "- `snapshot` `{ token }`: after a complete answer, the question, answer and every lookup's output, signed; POST it to /insights to save the answer as a report",
           "- `error` `{ code, message, retryAfterSeconds? }`: `RATE_LIMITED`, `QUOTA_EXHAUSTED`, `MODEL_UNAVAILABLE`, `MODEL_ERROR`, `MODEL_BLOCKED` or `AGENT_FAILED`",
           "- `done` `{ model, steps, usage: { inputTokens, outputTokens } }`: always last",
           "",

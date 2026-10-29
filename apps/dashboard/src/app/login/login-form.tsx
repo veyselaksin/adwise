@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2Icon } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useActionState } from "react";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
@@ -8,11 +9,17 @@ import { Label } from "@components/ui/label";
 import type { LoginState } from "@typings/auth";
 import { signIn } from "./actions";
 
-export function LoginForm() {
+/** The form with the page to return to after sign-in (`?next=`, set by the proxy). */
+export function LoginFormWithNext() {
+  return <LoginForm next={useSearchParams().get("next") ?? undefined} />;
+}
+
+export function LoginForm({ next }: { next?: string }) {
   const [state, action, pending] = useActionState<LoginState, FormData>(signIn, {});
 
   return (
     <form action={action} className="flex flex-col gap-4">
+      {next && <input type="hidden" name="next" value={next} />}
       {state.error && (
         <p
           role="alert"

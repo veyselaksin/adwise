@@ -65,6 +65,8 @@ function applyEvent(turn: AgentTurn, event: AgentEvent): AgentTurn {
       return { ...turn, answer: event.text, draft: "" };
     case "follow_ups":
       return { ...turn, followUps: event.questions };
+    case "snapshot":
+      return { ...turn, snapshot: event.token };
     case "error":
       return { ...turn, error: { code: event.code, message: event.message } };
     case "done":

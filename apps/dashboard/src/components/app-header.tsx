@@ -11,6 +11,7 @@ const PAGES = [
   { href: "/", label: "Overview" },
   { href: "/anomalies", label: "Anomalies" },
   { href: "/investigate", label: "Investigate" },
+  { href: "/insights", label: "Insights" },
   { href: "/rules", label: "Rules" },
 ] as const;
 

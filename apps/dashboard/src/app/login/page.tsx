@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Brand } from "@components/brand";
 import { ThemeSwitcher } from "@components/theme-switcher";
 import { HeroCarousel } from "./hero-carousel";
-import { LoginForm } from "./login-form";
+import { LoginForm, LoginFormWithNext } from "./login-form";
 
 export const metadata: Metadata = { title: "Sign in · ADWISE" };
 
@@ -20,7 +21,9 @@ export default function LoginPage() {
             <p className="mb-6 text-sm text-muted-foreground">
               Sign in with the team account to open the dashboard.
             </p>
-            <LoginForm />
+            <Suspense fallback={<LoginForm />}>
+              <LoginFormWithNext />
+            </Suspense>
             <p className="mt-5 text-center text-xs text-muted-foreground">
               Read-only access to Livensa&apos;s Meta and TikTok ad data.
             </p>

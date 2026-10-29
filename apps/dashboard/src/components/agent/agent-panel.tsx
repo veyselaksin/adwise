@@ -15,6 +15,7 @@ import {
   XIcon,
 } from "lucide-react";
 import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { SaveInsightButton } from "@components/insights/save-insight-button";
 import { Button } from "@components/ui/button";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@components/ui/select";
 import { Textarea } from "@components/ui/textarea";
@@ -323,16 +324,17 @@ function Turn({ turn, modelLabel, onRetry, onAsk }: TurnProps) {
       )}
 
       {turn.usage && turn.answer && (
-        <div className={cn(ENTER, "flex items-center justify-between gap-2")}>
+        <div className={cn(ENTER, "flex flex-col gap-2")}>
+          <div className="flex flex-wrap items-center gap-1.5" aria-label="Answer actions">
+            <SaveInsightButton snapshot={turn.snapshot} />
+            <PinButton question={turn.question} steps={turn.steps} />
+            <CopyButton label="Copy" text={turn.answer} />
+          </div>
           <p className="text-[0.7rem] text-muted-foreground tabular-nums">
             {modelLabel && `${modelLabel} · `}
             {turn.usage.steps} model call{turn.usage.steps === 1 ? "" : "s"} · {formatTokens(turn.usage.tokens)}{" "}
             tokens
           </p>
-          <div className="flex items-center">
-            <PinButton question={turn.question} steps={turn.steps} />
-            <CopyButton label="Copy answer" iconOnly text={turn.answer} />
-          </div>
         </div>
       )}
 

@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import fp from "fastify-plugin";
 import { ZenMuxClient } from "../clients/zenmux.client.js";
+import { SnapshotSigner } from "../lib/snapshot.js";
 import { BudgetsRepository } from "../database/repositories/budgets.repository.js";
 import { EntitiesRepository } from "../database/repositories/entities.repository.js";
 import { MetricsRepository } from "../database/repositories/metrics.repository.js";
@@ -10,6 +11,7 @@ import { AuthService } from "../services/auth.service.js";
 import { BriefService } from "../services/brief.service.js";
 import { BudgetsService } from "../services/budgets.service.js";
 import { EntitiesService } from "../services/entities.service.js";
+import { InsightsService } from "../services/insights.service.js";
 import { InvestigationService } from "../services/investigation.service.js";
 import { KnowledgeService } from "../services/knowledge.service.js";
 import { McpService } from "../services/mcp.service.js";
@@ -30,6 +32,8 @@ export type Services = {
   releases: ReleasesService;
   rules: RulesService;
   pins: PinsService;
+  /** Agent answers saved as reports, from snapshots the agent stream signs. */
+  insights: InsightsService;
   /** null when ZENMUX_API_KEY isn't set. */
   agent: AgentService | null;
   /** Always on; without ZENMUX_API_KEY its reports have the facts but no interpretation. */
@@ -61,6 +65,8 @@ export default fp<ServicesOptions>(
     ]);
     const pins = await PinsService.load(config.PINS_PATH, metrics);
     const entities = new EntitiesService(new EntitiesRepository(app.db));
+    const signer = new SnapshotSigner(config.JWT_SECRET);
+    const insights = await InsightsService.load(config.INSIGHTS_PATH, { signer, metrics, entities });
     const budgets = new BudgetsService(new BudgetsRepository(app.db), metrics);
     const anomalies = new AnomaliesService(metrics);
 
@@ -79,7 +85,9 @@ export default fp<ServicesOptions>(
       releases,
       rules,
       pins,
-      agent: model && new AgentService(model, { metrics, entities, budgets, releases, anomalies }, knowledge, rules, app.log),
+      insights,
+      agent:
+        model && new AgentService(model, { metrics, entities, budgets, releases, anomalies }, knowledge, rules, app.log, signer),
       investigation: new InvestigationService({ metrics, entities, releases, knowledge, rules, model, log: app.log }),
       mcp: new McpService({ metrics, entities, budgets, releases, anomalies }, knowledge, rules),
     });

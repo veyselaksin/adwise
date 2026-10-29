@@ -6,6 +6,7 @@ import briefRoutes from "./brief.routes.js";
 import budgetsRoutes from "./budgets.routes.js";
 import entitiesRoutes from "./entities.routes.js";
 import healthRoutes from "./health.routes.js";
+import insightsRoutes from "./insights.routes.js";
 import investigationRoutes from "./investigation.routes.js";
 import mcpRoutes from "./mcp.routes.js";
 import pinsRoutes from "./pins.routes.js";
@@ -27,6 +28,7 @@ const routes: FastifyPluginAsyncTypebox = async (app) => {
   await app.register(investigationRoutes);
   await app.register(rulesRoutes);
   await app.register(pinsRoutes);
+  await app.register(insightsRoutes);
   await app.register(mcpRoutes);
 };
 

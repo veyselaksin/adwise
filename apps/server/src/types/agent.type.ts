@@ -58,6 +58,8 @@ export type AgentEvent =
   | { type: "note"; text: string }
   | { type: "answer"; text: string }
   | { type: "follow_ups"; questions: string[] }
+  /** The answer and its evidence, signed, for saving as an insight (POST /insights). */
+  | { type: "snapshot"; token: string }
   | { type: "error"; code: string; message: string; retryAfterSeconds?: number }
   | { type: "done"; model: AgentModelId; steps: number; usage: ModelUsage };
 

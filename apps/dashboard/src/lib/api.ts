@@ -8,6 +8,7 @@ import type { Brief } from "@typings/brief";
 import type { BudgetPacing } from "@typings/budgets";
 import type { Entities } from "@typings/entities";
 import type { Health } from "@typings/health";
+import type { Insight, InsightDraft, InsightQuery, InsightSummary } from "@typings/insights";
 import type { InvestigationRequest } from "@typings/investigation";
 import type { Catalog, MetricsQuery, MetricsResult } from "@typings/metrics";
 import type { Pin, PinResult } from "@typings/pins";
@@ -112,6 +113,28 @@ export const createPin = (title: string, query: Record<string, unknown>) =>
   authed<Pin>("/pins", { method: "POST", body: JSON.stringify({ title, query }) });
 
 export const deletePin = (id: string) => authed<Pin>(`/pins/${encodeURIComponent(id)}`, { method: "DELETE" });
+
+/** The team's saved insights, without their evidence. */
+export function getInsights(query: InsightQuery = {}) {
+  const params = new URLSearchParams(Object.entries(query).filter((e): e is [string, string] => !!e[1]));
+  return authed<InsightSummary[]>(`/insights${params.size ? `?${params}` : ""}`);
+}
+
+/** A saved report as it was saved; nothing is re-run. */
+export const getInsight = (id: string) => authed<Insight>(`/insights/${encodeURIComponent(id)}`);
+
+/** What saving an answer's signed snapshot would store. Writes nothing. */
+export const previewInsight = (token: string) =>
+  authed<InsightDraft>("/insights/preview", { method: "POST", body: JSON.stringify({ token }) });
+
+export const createInsight = (token: string, title: string) =>
+  authed<Insight>("/insights", { method: "POST", body: JSON.stringify({ token, title }) });
+
+export const renameInsight = (id: string, title: string) =>
+  authed<Insight>(`/insights/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ title }) });
+
+export const deleteInsight = (id: string) =>
+  authed<Insight>(`/insights/${encodeURIComponent(id)}`, { method: "DELETE" });
 
 export const getRules = () => authed<Rule[]>("/rules");
 

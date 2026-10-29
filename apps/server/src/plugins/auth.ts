@@ -3,6 +3,14 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 import { failure } from "../lib/response.js";
 
+declare module "@fastify/jwt" {
+  interface FastifyJWT {
+    /** The signed-in account; insights record it as their owner. */
+    payload: { sub: string };
+    user: { sub: string };
+  }
+}
+
 declare module "fastify" {
   interface FastifyInstance {
     /** preHandler for protected routes: `{ onRequest: [app.authenticate] }`. */

@@ -9,6 +9,7 @@ import type { LoginState } from "@typings/auth";
 export async function signIn(_prev: LoginState, form: FormData): Promise<LoginState> {
   const username = String(form.get("username") ?? "").trim();
   const password = String(form.get("password") ?? "");
+  const next = safeNext(form.get("next"));
   if (!username || !password) return { error: "Enter your username and password.", username };
 
   try {
@@ -29,7 +30,14 @@ export async function signIn(_prev: LoginState, form: FormData): Promise<LoginSt
     }
     return { error: err instanceof ApiError ? err.message : "Sign-in failed. Try again.", username };
   }
-  redirect("/");
+  redirect(next);
+}
+
+/** Only a path on this site, so the sign-in page can't be used to send people elsewhere. */
+function safeNext(value: FormDataEntryValue | null): string {
+  const path = typeof value === "string" ? value : "";
+  if (!path.startsWith("/") || path.startsWith("//") || path.startsWith("/\\") || path.startsWith("/login")) return "/";
+  return path;
 }
 
 export async function signOut() {

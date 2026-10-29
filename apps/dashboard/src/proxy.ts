@@ -8,7 +8,11 @@ import { SESSION_COOKIE } from "@constants/auth";
  */
 export function proxy(request: NextRequest) {
   if (!request.cookies.has(SESSION_COOKIE)) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    const login = new URL("/login", request.url);
+    // Page visits come back here after sign-in (e.g. a shared insight link); the sign-in action checks the path.
+    const { pathname, search } = request.nextUrl;
+    if (request.method === "GET" && pathname !== "/") login.searchParams.set("next", `${pathname}${search}`);
+    return NextResponse.redirect(login);
   }
   return NextResponse.next();
 }

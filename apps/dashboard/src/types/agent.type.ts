@@ -10,6 +10,8 @@ export type AgentEvent =
   | { type: "note"; text: string }
   | { type: "answer"; text: string }
   | { type: "follow_ups"; questions: string[] }
+  /** The answer and its evidence, signed by the server, for saving as an insight. */
+  | { type: "snapshot"; token: string }
   | { type: "error"; code: string; message: string; retryAfterSeconds?: number }
   | { type: "done"; model: string; steps: number; usage: { inputTokens: number; outputTokens: number } };
 
@@ -53,6 +55,8 @@ export type AgentTurn = {
   answer?: string;
   /** Suggested next questions, sent after the answer. */
   followUps?: string[];
+  /** Signed snapshot of a complete answer; saving it as an insight needs it. */
+  snapshot?: string;
   error?: { code: string; message: string };
   usage?: { model: string; steps: number; tokens: number };
   status: "streaming" | "done" | "stopped";

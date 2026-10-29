@@ -43,11 +43,13 @@ class ScriptedModel implements ModelClient {
   }
 }
 
+/** The stream's events, without the signed snapshot (insights.test.ts covers it). */
 const events = (payload: string) =>
   payload
     .trim()
     .split("\n")
-    .map((line) => JSON.parse(line) as AgentEvent);
+    .map((line) => JSON.parse(line) as AgentEvent)
+    .filter((e) => e.type !== "snapshot");
 
 describe("build logs", () => {
   it("parses every release with its commits", async () => {

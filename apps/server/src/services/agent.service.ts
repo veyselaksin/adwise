@@ -1,8 +1,11 @@
 import type { FastifyBaseLogger } from "fastify";
 import { ModelError } from "../clients/zenmux.client.js";
-import { AGENT_MAX_FOLLOW_UPS, AGENT_MAX_STEPS, AGENT_RECENT_MESSAGES } from "../constants/agent.constant.js";
+import { AGENT_MAX_FOLLOW_UPS, AGENT_MAX_STEPS, AGENT_MODELS, AGENT_RECENT_MESSAGES } from "../constants/agent.constant.js";
+import { SNAPSHOT_EARLIER_QUESTIONS, SNAPSHOT_MAX_EVIDENCE_BYTES } from "../constants/insights.constant.js";
 import { AppError } from "../lib/response.js";
+import type { SnapshotSigner } from "../lib/snapshot.js";
 import type { AgentEvent, AgentModelId, ChatMessage, ModelClient, ModelMessage, ModelUsage } from "../types/agent.type.js";
+import type { Evidence, Snapshot } from "../types/insights.type.js";
 import { buildSystemPrompt } from "./agent.prompt.js";
 import { runTool, TOOL_DECLARATIONS, toolLabel, type ToolDeps, type ToolOutput } from "./agent.tools.js";
 import type { KnowledgeService } from "./knowledge.service.js";
@@ -21,6 +24,7 @@ export class AgentService {
     private readonly knowledge: KnowledgeService,
     private readonly rules: RulesService,
     private readonly log: Pick<FastifyBaseLogger, "warn" | "error">,
+    private readonly snapshots: SnapshotSigner,
   ) {}
 
   /** Throws before anything is streamed, so bad input still gets a normal 400. */
@@ -39,6 +43,9 @@ export class AgentService {
     // Built per question, so a rule added on the Rules page applies from the next question.
     const system = buildSystemPrompt(this.deps.metrics.catalog(), this.knowledge, this.rules.active());
     const usage: ModelUsage = { inputTokens: 0, outputTokens: 0 };
+    // What the answer rests on, kept for the snapshot an insight is saved from.
+    const evidence: Evidence[] = [];
+    const notes: string[] = [];
     let steps = 0;
 
     try {
@@ -72,9 +79,14 @@ export class AgentService {
           const { answer, followUps } = splitFollowUps(text);
           yield { type: "answer", text: answer };
           if (followUps.length > 0) yield { type: "follow_ups", questions: followUps };
+          yield { type: "snapshot", token: this.snapshots.sign(this.snapshot(messages, answer, notes, evidence, model)) };
           break;
         }
-        if (text) yield { type: "note", text: splitFollowUps(text).answer };
+        if (text) {
+          const note = splitFollowUps(text).answer;
+          notes.push(note);
+          yield { type: "note", text: note };
+        }
 
         const ids = calls.map((_, i) => `${steps}.${i + 1}`);
         const args = calls.map((call) => parseArgs(call.function.arguments));
@@ -92,6 +104,7 @@ export class AgentService {
           const out = outputs[i]!;
           if (!out.ok) this.log.warn({ tool: call.function.name, args: call.function.arguments, error: out.data.error }, "Agent tool call failed");
           yield { type: "tool_result", id: ids[i]!, ok: out.ok, summary: out.summary };
+          evidence.push(evidenceOf(ids[i]!, call.function.name, args[i] ?? {}, out));
           if (out.export) yield { type: "export", id: ids[i]!, label: toolLabel(call.function.name, args[i] ?? {}), ...out.export };
           history.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(out.data) });
         }
@@ -108,6 +121,29 @@ export class AgentService {
     }
     yield { type: "done", model, steps, usage };
   }
+
+  private snapshot(messages: ChatMessage[], answer: string, notes: string[], evidence: Evidence[], model: AgentModelId): Snapshot {
+    const questions = messages.filter((m) => m.role === "user").map((m) => m.text.trim());
+    return {
+      v: 1,
+      answeredAt: new Date().toISOString(),
+      question: questions.at(-1)!,
+      earlierQuestions: questions.slice(0, -1).slice(-SNAPSHOT_EARLIER_QUESTIONS),
+      answer,
+      notes,
+      model: { id: model, label: AGENT_MODELS.find((m) => m.id === model)?.label ?? model },
+      dataToday: this.deps.metrics.catalog().today,
+      evidence,
+    };
+  }
+}
+
+/** A lookup as the model read it; a very large output keeps only its summary. */
+function evidenceOf(id: string, tool: string, args: Record<string, unknown>, out: ToolOutput): Evidence {
+  const base = { id, tool, label: toolLabel(tool, args), args, ok: out.ok, summary: out.summary };
+  return Buffer.byteLength(JSON.stringify(out.data)) > SNAPSHOT_MAX_EVIDENCE_BYTES
+    ? { ...base, data: null, truncated: true }
+    : { ...base, data: out.data };
 }
 
 /**

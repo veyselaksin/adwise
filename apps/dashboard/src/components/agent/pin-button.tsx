@@ -29,14 +29,17 @@ export function PinButton({ question, steps }: { question: string; steps: AgentS
 
   return (
     <Button
-      variant="ghost"
-      size="icon-xs"
+      variant="outline"
+      size="xs"
       onClick={pin}
       disabled={pending || pinned}
-      aria-label={pinned ? "Pinned" : "Pin to the overview"}
-      title={pinned ? "Pinned to the overview" : `Pin to the overview: ${lookup.label}`}
+      title={
+        pinned
+          ? "Pinned: the tile is on the overview"
+          : `Adds a live tile to the overview that re-runs this lookup on every visit: ${lookup.label}`
+      }
     >
-      {pinned ? <CheckIcon /> : <PinIcon />}
+      {pinned ? <CheckIcon /> : <PinIcon />} {pinned ? "Pinned to overview" : "Pin to overview"}
     </Button>
   );
 }

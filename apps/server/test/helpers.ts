@@ -28,8 +28,9 @@ export const testEnv = (overrides: Record<string, string> = {}) =>
     DB_PATH,
     CASE_DIR,
     ZENMUX_API_KEY: "",
-    // Fresh rules and pins files per app, so tests never share or keep them.
+    // Fresh rules, pins and insights files per app, so tests never share or keep them.
     RULES_PATH: join(tmpdir(), `adwise-rules-${randomUUID()}.json`),
     PINS_PATH: join(tmpdir(), `adwise-pins-${randomUUID()}.json`),
+    INSIGHTS_PATH: join(tmpdir(), `adwise-insights-${randomUUID()}.json`),
     ...overrides,
   });

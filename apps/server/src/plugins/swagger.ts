@@ -58,6 +58,11 @@ export default fp(
             description: "Answering rules the team adds without a code change; enabled ones go to the agent on every question.",
           },
           {
+            name: "insights",
+            description:
+              "Agent answers saved as frozen reports with the evidence the agent read; shared with the team by link, changed only by whoever saved them.",
+          },
+          {
             name: "pins",
             description: "Agent lookups pinned to the overview as live tiles; re-run on the metric layer, no model call.",
           },
